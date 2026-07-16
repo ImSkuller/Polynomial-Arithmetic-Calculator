@@ -1,0 +1,38 @@
+# Build output
+build/
+out/
+bin/
+cmake-build-*/
+
+# CMake artifacts
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+*.cmake
+!CMakeLists.txt
+
+# Compiled objects / binaries
+*.obj
+*.o
+*.exe
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.exp
+
+# Visual Studio / MSVC
+.vs/
+*.user
+*.sln
+*.vcxproj*
+
+# Editor
+.vscode/
+.idea/
+
+# Saved polynomial data produced at runtime
+saved/
+*.poly
