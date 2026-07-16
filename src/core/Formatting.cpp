@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iomanip>
 #include <sstream>
+#include <string_view>
 
 namespace polycalc {
 
@@ -34,6 +35,31 @@ std::string formatCoefficient(double value) {
         stream << std::setprecision(6) << value;
     }
     return stream.str();
+}
+
+bool fromSuperscript(const std::string& text, int& exponent) {
+    std::string digits;
+    std::size_t pos = 0;
+    while (pos < text.size()) {
+        bool matched = false;
+        for (int digit = 0; digit < static_cast<int>(kSuperscriptDigits.size()); ++digit) {
+            const std::string_view symbol = kSuperscriptDigits[static_cast<std::size_t>(digit)];
+            if (text.compare(pos, symbol.size(), symbol) == 0) {
+                digits += static_cast<char>('0' + digit);
+                pos += symbol.size();
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            return false;
+        }
+    }
+    if (digits.empty()) {
+        return false;
+    }
+    exponent = std::stoi(digits);
+    return true;
 }
 
 } // namespace polycalc

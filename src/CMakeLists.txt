@@ -1,6 +1,7 @@
 add_library(polycalc_core
     core/Formatting.cpp
     core/Polynomial.cpp
+    core/PolynomialParser.cpp
 )
 
 target_include_directories(polycalc_core

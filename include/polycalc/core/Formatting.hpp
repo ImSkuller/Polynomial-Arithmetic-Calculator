@@ -11,4 +11,8 @@ std::string toSuperscript(int exponent);
 // decimal point, fractional values print trimmed to a reasonable precision.
 std::string formatCoefficient(double value);
 
+// Decodes a run of Unicode superscript digits back to an integer (e.g. "¹²" -> 12).
+// Returns false if any character in text is not a superscript digit.
+bool fromSuperscript(const std::string& text, int& exponent);
+
 } // namespace polycalc

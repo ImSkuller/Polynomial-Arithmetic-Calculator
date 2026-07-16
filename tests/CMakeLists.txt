@@ -2,6 +2,7 @@ add_executable(polycalc_tests
     main_test.cpp
     test_version.cpp
     test_polynomial.cpp
+    test_parser.cpp
 )
 
 target_link_libraries(polycalc_tests PRIVATE polycalc_core)
