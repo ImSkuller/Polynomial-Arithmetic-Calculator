@@ -1,12 +1,14 @@
-# Header-only for now; gains compiled sources as core/services modules land.
-add_library(polycalc_core INTERFACE)
+add_library(polycalc_core
+    core/Formatting.cpp
+    core/Polynomial.cpp
+)
 
 target_include_directories(polycalc_core
-    INTERFACE
+    PUBLIC
         ${CMAKE_SOURCE_DIR}/include
 )
 
-target_compile_features(polycalc_core INTERFACE cxx_std_17)
+target_compile_features(polycalc_core PUBLIC cxx_std_17)
 
 add_executable(polycalc
     main.cpp
