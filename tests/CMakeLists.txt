@@ -4,6 +4,7 @@ add_executable(polycalc_tests
     test_polynomial.cpp
     test_parser.cpp
     test_services.cpp
+    test_history_manager.cpp
 )
 
 target_link_libraries(polycalc_tests PRIVATE polycalc_core)
