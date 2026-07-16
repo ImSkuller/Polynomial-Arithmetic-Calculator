@@ -6,6 +6,8 @@ add_library(polycalc_core
     services/PolynomialGenerator.cpp
     services/PolynomialStorage.cpp
     services/HistoryManager.cpp
+    console/Terminal.cpp
+    console/ConsoleUI.cpp
 )
 
 target_include_directories(polycalc_core
