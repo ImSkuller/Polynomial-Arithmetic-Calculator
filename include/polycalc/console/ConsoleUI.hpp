@@ -5,6 +5,14 @@
 
 namespace polycalc {
 
+// Thrown when an input prompt hits end-of-stream (e.g. stdin was redirected
+// from an exhausted file, or the user sent Ctrl-D/Ctrl-Z). Deliberately does
+// not derive from std::exception, so the per-menu `catch (const
+// std::exception&)` blocks that report ordinary input/parse errors do not
+// intercept it - it propagates straight up to main(), which exits cleanly
+// instead of looping forever on reads that can never succeed again.
+struct InputClosedException {};
+
 // Renders bordered, colored console output (banners, boxes, tables, menus)
 // and provides validated input prompts. All layout math is Unicode-aware
 // (see Formatting::displayWidth) so borders stay aligned around text

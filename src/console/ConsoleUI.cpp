@@ -183,7 +183,9 @@ void ConsoleUI::printInfo(const std::string& message) {
 std::string ConsoleUI::readLine(const std::string& prompt) {
     std::cout << colorize("❯ ", color::BoldMagenta) << prompt << ": ";
     std::string line;
-    std::getline(std::cin, line);
+    if (!std::getline(std::cin, line)) {
+        throw InputClosedException{};
+    }
     return line;
 }
 

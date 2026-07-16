@@ -1,9 +1,18 @@
-#include <iostream>
+#include <exception>
+#include <string>
 
-#include "polycalc/Version.hpp"
+#include "polycalc/Application.hpp"
+#include "polycalc/console/ConsoleUI.hpp"
 
 int main() {
-    std::cout << polycalc::kApplicationName << " v" << polycalc::kVersion << '\n';
-    std::cout << "Build scaffold OK.\n";
-    return 0;
+    try {
+        polycalc::Application application;
+        return application.run();
+    } catch (const polycalc::InputClosedException&) {
+        polycalc::ConsoleUI::printInfo("Input closed. Goodbye!");
+        return 0;
+    } catch (const std::exception& ex) {
+        polycalc::ConsoleUI::printError(std::string("Fatal error: ") + ex.what());
+        return 1;
+    }
 }

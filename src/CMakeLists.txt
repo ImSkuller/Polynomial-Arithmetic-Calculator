@@ -8,6 +8,7 @@ add_library(polycalc_core
     services/HistoryManager.cpp
     console/Terminal.cpp
     console/ConsoleUI.cpp
+    Application.cpp
 )
 
 target_include_directories(polycalc_core
