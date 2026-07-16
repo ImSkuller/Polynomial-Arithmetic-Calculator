@@ -49,7 +49,11 @@ int parseExponent(const std::string& text) {
         if (!allDigits) {
             throw std::invalid_argument("Invalid exponent: '" + text + "'");
         }
-        return std::stoi(digits);
+        try {
+            return std::stoi(digits);
+        } catch (...) {
+            throw std::invalid_argument("Invalid exponent: '" + text + "'");
+        }
     }
 
     int exponent = 0;

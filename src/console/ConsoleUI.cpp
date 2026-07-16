@@ -155,13 +155,14 @@ void ConsoleUI::printTable(const std::vector<std::string>& headers,
                << '\n';
 }
 
-void ConsoleUI::printMenu(const std::string& title, const std::vector<std::string>& options) {
+int ConsoleUI::printMenu(const std::string& title, const std::vector<std::string>& options) {
     std::vector<std::string> lines;
     lines.reserve(options.size());
     for (std::size_t i = 0; i < options.size(); ++i) {
         lines.push_back(std::to_string(i + 1) + ". " + options[i]);
     }
     printBox(lines, title);
+    return static_cast<int>(options.size());
 }
 
 void ConsoleUI::printSuccess(const std::string& message) {

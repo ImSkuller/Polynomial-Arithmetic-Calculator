@@ -75,6 +75,16 @@ TEST_CASE("parser rejects an empty expression") {
     REQUIRE(threw);
 }
 
+TEST_CASE("parser rejects an exponent that overflows int") {
+    bool threw = false;
+    try {
+        PolynomialParser::parse("3x^99999999999999999999");
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+    REQUIRE(threw);
+}
+
 TEST_CASE("parser rejects a negative exponent") {
     bool threw = false;
     try {

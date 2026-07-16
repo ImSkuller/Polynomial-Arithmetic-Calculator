@@ -25,7 +25,10 @@ public:
     static void printTable(const std::vector<std::string>& headers,
                             const std::vector<std::vector<std::string>>& rows,
                             const std::string& title = "");
-    static void printMenu(const std::string& title, const std::vector<std::string>& options);
+    // Renders a numbered menu and returns options.size(), so callers can
+    // pass it straight to readMenuChoice(1, ...) without duplicating the
+    // option count as a separate literal that could drift out of sync.
+    static int printMenu(const std::string& title, const std::vector<std::string>& options);
 
     static void printSuccess(const std::string& message);
     static void printError(const std::string& message);

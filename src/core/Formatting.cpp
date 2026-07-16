@@ -15,6 +15,12 @@ constexpr std::array<const char*, 10> kSuperscriptDigits = {
     "⁵", "⁶", "⁷", "⁸", "⁹",
 };
 
+// How close a value must be to its rounded form to print without a decimal
+// point. Chosen independently of Polynomial::kEpsilon (which governs when a
+// coefficient counts as zero) - the two tolerances mean different things and
+// are allowed to diverge if one is ever tuned without the other.
+constexpr double kIntegralDisplayTolerance = 1e-9;
+
 } // namespace
 
 std::string toSuperscript(int exponent) {
@@ -29,7 +35,7 @@ std::string toSuperscript(int exponent) {
 
 std::string formatCoefficient(double value) {
     std::ostringstream stream;
-    if (std::fabs(value - std::round(value)) < 1e-9) {
+    if (std::fabs(value - std::round(value)) < kIntegralDisplayTolerance) {
         stream << static_cast<long long>(std::llround(value));
     } else {
         stream << std::setprecision(6) << value;

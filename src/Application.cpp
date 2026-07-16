@@ -40,17 +40,17 @@ int Application::run() {
 }
 
 void Application::showMainMenu() {
-    ConsoleUI::printMenu("Main Menu", {
-                                          "Build & Edit Polynomial",
-                                          "View & Analyze",
-                                          "Arithmetic Operations",
-                                          "History (Undo / Redo)",
-                                          "Save & Load",
-                                          "Random Generator",
-                                          "Statistics & Performance",
-                                          "Exit",
-                                      });
-    switch (ConsoleUI::readMenuChoice(1, 8)) {
+    const int optionCount = ConsoleUI::printMenu("Main Menu", {
+                                                                   "Build & Edit Polynomial",
+                                                                   "View & Analyze",
+                                                                   "Arithmetic Operations",
+                                                                   "History (Undo / Redo)",
+                                                                   "Save & Load",
+                                                                   "Random Generator",
+                                                                   "Statistics & Performance",
+                                                                   "Exit",
+                                                               });
+    switch (ConsoleUI::readMenuChoice(1, optionCount)) {
         case 1:
             handleBuildAndEdit();
             break;
@@ -85,16 +85,17 @@ void Application::handleBuildAndEdit() {
     while (!back) {
         Terminal::clearScreen();
         printCurrentStatus();
-        ConsoleUI::printMenu("Build & Edit Polynomial", {
-                                                             "Create from expression (e.g. 3x^2 + 4x - 8)",
-                                                             "Insert term",
-                                                             "Delete term",
-                                                             "Update coefficient",
-                                                             "Update exponent",
-                                                             "Clear polynomial",
-                                                             "Back",
-                                                         });
-        const int choice = ConsoleUI::readMenuChoice(1, 7);
+        const int optionCount =
+            ConsoleUI::printMenu("Build & Edit Polynomial", {
+                                                                 "Create from expression (e.g. 3x^2 + 4x - 8)",
+                                                                 "Insert term",
+                                                                 "Delete term",
+                                                                 "Update coefficient",
+                                                                 "Update exponent",
+                                                                 "Clear polynomial",
+                                                                 "Back",
+                                                             });
+        const int choice = ConsoleUI::readMenuChoice(1, optionCount);
         try {
             switch (choice) {
                 case 1: {
@@ -186,15 +187,15 @@ void Application::handleViewAndAnalyze() {
     while (!back) {
         Terminal::clearScreen();
         printCurrentStatus();
-        ConsoleUI::printMenu("View & Analyze", {
-                                                    "Display polynomial",
-                                                    "Evaluate at x",
-                                                    "Sort by exponent",
-                                                    "Merge like terms",
-                                                    "Simplify",
-                                                    "Back",
-                                                });
-        const int choice = ConsoleUI::readMenuChoice(1, 6);
+        const int optionCount = ConsoleUI::printMenu("View & Analyze", {
+                                                                            "Display polynomial",
+                                                                            "Evaluate at x",
+                                                                            "Sort by exponent",
+                                                                            "Merge like terms",
+                                                                            "Simplify",
+                                                                            "Back",
+                                                                        });
+        const int choice = ConsoleUI::readMenuChoice(1, optionCount);
         try {
             switch (choice) {
                 case 1:
@@ -249,14 +250,15 @@ void Application::handleArithmetic() {
         Terminal::clearScreen();
         printCurrentStatus();
         ConsoleUI::printBox({"Q(x) = " + secondary_.toString()}, "Second Polynomial");
-        ConsoleUI::printMenu("Arithmetic Operations", {
-                                                           "Set second polynomial from expression",
-                                                           "Add: P + Q",
-                                                           "Subtract: P - Q",
-                                                           "Multiply: P * Q",
-                                                           "Back",
-                                                       });
-        const int choice = ConsoleUI::readMenuChoice(1, 5);
+        const int optionCount =
+            ConsoleUI::printMenu("Arithmetic Operations", {
+                                                               "Set second polynomial from expression",
+                                                               "Add: P + Q",
+                                                               "Subtract: P - Q",
+                                                               "Multiply: P * Q",
+                                                               "Back",
+                                                           });
+        const int choice = ConsoleUI::readMenuChoice(1, optionCount);
         try {
             switch (choice) {
                 case 1: {
@@ -313,8 +315,8 @@ void Application::handleHistory() {
         ConsoleUI::printBox({"Undo steps available: " + std::to_string(history_.undoDepth()),
                               "Redo steps available: " + std::to_string(history_.redoDepth())},
                              "History");
-        ConsoleUI::printMenu("History", {"Undo", "Redo", "Back"});
-        const int choice = ConsoleUI::readMenuChoice(1, 3);
+        const int optionCount = ConsoleUI::printMenu("History", {"Undo", "Redo", "Back"});
+        const int choice = ConsoleUI::readMenuChoice(1, optionCount);
         try {
             switch (choice) {
                 case 1:
@@ -345,12 +347,12 @@ void Application::handleSaveAndLoad() {
     while (!back) {
         Terminal::clearScreen();
         printCurrentStatus();
-        ConsoleUI::printMenu("Save & Load", {
-                                                 "Save current polynomial to file",
-                                                 "Load polynomial from file",
-                                                 "Back",
-                                             });
-        const int choice = ConsoleUI::readMenuChoice(1, 3);
+        const int optionCount = ConsoleUI::printMenu("Save & Load", {
+                                                                         "Save current polynomial to file",
+                                                                         "Load polynomial from file",
+                                                                         "Back",
+                                                                     });
+        const int choice = ConsoleUI::readMenuChoice(1, optionCount);
         try {
             switch (choice) {
                 case 1: {
