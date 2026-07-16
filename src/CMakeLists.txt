@@ -2,6 +2,9 @@ add_library(polycalc_core
     core/Formatting.cpp
     core/Polynomial.cpp
     core/PolynomialParser.cpp
+    services/Timer.cpp
+    services/PolynomialGenerator.cpp
+    services/PolynomialStorage.cpp
 )
 
 target_include_directories(polycalc_core
