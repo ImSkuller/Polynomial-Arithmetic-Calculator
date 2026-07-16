@@ -12,15 +12,20 @@ namespace polycalc {
 
 // A polynomial represented as a singly linked list of terms.
 //
-// Invariant maintained by every public mutator: nodes are kept sorted by
-// strictly descending exponent, no two nodes share an exponent, and no node
-// holds a coefficient of (approximately) zero. This invariant is what lets
-// degree() run in O(1), lets equality and display walk the list directly
-// without normalizing first, and lets addition be implemented as a single
-// merge pass over two already-sorted lists (mirroring the merge step of
-// merge sort). multiply() is the one operation that temporarily breaks the
-// invariant (it builds an unsorted, unmerged product list for speed) before
-// restoring it via mergeLikeTerms().
+// insertTerm() guarantees no two nodes share an exponent (merging into an
+// existing term, or removing it if the merge cancels to zero) but does not
+// maintain any particular node order - a new, non-duplicate term is simply
+// prepended. appendTermRaw() is more primitive still: it appends a node
+// unconditionally, without checking for an existing same-exponent term, so
+// duplicate exponents and arbitrary order can arise. That is exactly what
+// the expression parser and file loader use, so that parsing
+// "3x^2 + 4x^2" faithfully preserves both terms until the user explicitly
+// merges them - mirroring how a student would work through the algorithm by
+// hand. sortByExponent(), mergeLikeTerms(), and simplify() are the
+// operations that restore canonical (descending-exponent, duplicate-free,
+// zero-free) form. operator+ and operator- normalize their operands
+// internally first, so addition and subtraction are correct regardless of a
+// polynomial's current order or duplicate state.
 class Polynomial {
 public:
     static constexpr double kEpsilon = 1e-9;
@@ -35,21 +40,32 @@ public:
     void swap(Polynomial& other) noexcept;
 
     // Inserts coefficient*x^exponent, merging into an existing same-exponent
-    // term if present (removing it if the merge cancels to zero). Returns
-    // true if the polynomial's state changed. Throws std::invalid_argument
-    // if exponent is negative.
+    // term if one exists anywhere in the list (removing it if the merge
+    // cancels to zero), otherwise prepending a new node. Returns true if the
+    // polynomial's state changed. Throws std::invalid_argument if exponent
+    // is negative.
     bool insertTerm(double coefficient, int exponent);
 
-    // Removes the term with the given exponent. Returns true if it existed.
+    // Unconditionally prepends a new node for coefficient*x^exponent, even
+    // if a term with the same exponent already exists. Used internally by
+    // the parser and file loader to preserve input exactly as given; prefer
+    // insertTerm() for ordinary single-term edits. Throws
+    // std::invalid_argument if exponent is negative. A zero coefficient is
+    // silently ignored, since a zero term is not a term.
+    void appendTermRaw(double coefficient, int exponent);
+
+    // Removes the first term found with the given exponent. Returns true if
+    // it existed.
     bool deleteTerm(int exponent);
 
-    // Sets the coefficient of an existing term (removing it if the new
-    // coefficient is zero). Returns true if the term existed.
+    // Sets the coefficient of the first existing term found with the given
+    // exponent (removing it if the new coefficient is zero). Returns true if
+    // the term existed.
     bool updateCoefficient(int exponent, double newCoefficient);
 
-    // Moves an existing term to a new exponent, merging if one already
-    // occupies it. Returns true if the term existed. Throws
-    // std::invalid_argument if newExponent is negative.
+    // Moves the first existing term found at oldExponent to newExponent,
+    // merging if a term already occupies it. Returns true if the term
+    // existed. Throws std::invalid_argument if newExponent is negative.
     bool updateExponent(int oldExponent, int newExponent);
 
     void clear() noexcept;
@@ -74,9 +90,13 @@ public:
     Polynomial& operator-=(const Polynomial& rhs);
     Polynomial& operator*=(const Polynomial& rhs);
 
-    bool operator==(const Polynomial& rhs) const noexcept;
-    bool operator!=(const Polynomial& rhs) const noexcept;
+    // Compares polynomials by mathematical value: order and duplicate
+    // exponents in either operand do not affect the result.
+    bool operator==(const Polynomial& rhs) const;
+    bool operator!=(const Polynomial& rhs) const;
 
+    // Renders terms in the polynomial's current internal order (which may
+    // contain unmerged duplicates if it has not been simplified).
     std::string toString() const;
     friend std::ostream& operator<<(std::ostream& os, const Polynomial& polynomial);
 
@@ -86,7 +106,6 @@ public:
 private:
     Node* head_ = nullptr;
 
-    void pushFront(double coefficient, int exponent);
     void pruneZeroCoefficients() noexcept;
 
     // Merge-sort helpers used by sortByExponent(); relink existing nodes,

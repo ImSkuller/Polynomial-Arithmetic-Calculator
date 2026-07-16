@@ -77,7 +77,7 @@ void parseSingleTerm(const std::string& rawTerm, Polynomial& polynomial) {
     const auto xPos = term.find_first_of("xX");
     if (xPos == std::string::npos) {
         const double magnitude = parseCoefficientMagnitude(term);
-        polynomial.insertTerm(sign * magnitude, 0);
+        polynomial.appendTermRaw(sign * magnitude, 0);
         return;
     }
 
@@ -86,7 +86,7 @@ void parseSingleTerm(const std::string& rawTerm, Polynomial& polynomial) {
 
     const double magnitude = parseCoefficientMagnitude(coefficientText);
     const int exponent = parseExponent(exponentText);
-    polynomial.insertTerm(sign * magnitude, exponent);
+    polynomial.appendTermRaw(sign * magnitude, exponent);
 }
 
 } // namespace

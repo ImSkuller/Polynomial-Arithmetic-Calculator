@@ -18,13 +18,28 @@ Polynomial makePolynomial(std::initializer_list<std::pair<double, int>> terms) {
 
 } // namespace
 
-TEST_CASE("insertTerm keeps terms sorted by descending exponent") {
+TEST_CASE("insertTerm keeps exponents unique but does not sort") {
+    // insertTerm only guarantees no duplicate exponents; sortByExponent()
+    // is what imposes descending order.
     Polynomial p = makePolynomial({{3, 0}, {5, 4}, {2, 2}});
+    REQUIRE_EQ(p.termCount(), 3u);
+
+    p.sortByExponent();
     const auto terms = p.terms();
-    REQUIRE_EQ(terms.size(), 3u);
     REQUIRE_EQ(terms[0].second, 4);
     REQUIRE_EQ(terms[1].second, 2);
     REQUIRE_EQ(terms[2].second, 0);
+}
+
+TEST_CASE("appendTermRaw preserves duplicate exponents and insertion order") {
+    Polynomial p;
+    p.appendTermRaw(3, 2);
+    p.appendTermRaw(4, 2);
+    REQUIRE_EQ(p.termCount(), 2u);
+
+    p.mergeLikeTerms();
+    REQUIRE_EQ(p.termCount(), 1u);
+    REQUIRE(std::fabs(p.terms()[0].first - 7.0) < 1e-9);
 }
 
 TEST_CASE("insertTerm merges duplicate exponents") {
@@ -73,12 +88,14 @@ TEST_CASE("updateCoefficient changes value and removes on zero") {
     REQUIRE(!p.updateCoefficient(2, 5.0));
 }
 
-TEST_CASE("updateExponent relocates a term and keeps sort order") {
+TEST_CASE("updateExponent relocates a term to its new exponent") {
     Polynomial p = makePolynomial({{3, 1}, {2, 5}});
     REQUIRE(p.updateExponent(1, 8));
-    const auto terms = p.terms();
-    REQUIRE_EQ(terms[0].second, 8);
-    REQUIRE_EQ(terms[1].second, 5);
+    REQUIRE_EQ(p.termCount(), 2u);
+    REQUIRE(!p.deleteTerm(1));
+    REQUIRE(p.deleteTerm(8));
+    REQUIRE(p.deleteTerm(5));
+    REQUIRE(p.isZero());
 }
 
 TEST_CASE("updateExponent merges into an existing term at the destination") {
@@ -148,6 +165,18 @@ TEST_CASE("operator+ merges two sorted polynomials") {
     REQUIRE(sum == makePolynomial({{7, 2}, {1, 1}, {3, 0}}));
 }
 
+TEST_CASE("operator+ is correct even with raw, unmerged, out-of-order operands") {
+    Polynomial a;
+    a.appendTermRaw(3, 0);
+    a.appendTermRaw(2, 2);
+    a.appendTermRaw(2, 2); // duplicate, not yet merged
+
+    Polynomial b = makePolynomial({{5, 2}, {1, 1}});
+
+    Polynomial sum = a + b;
+    REQUIRE(sum == makePolynomial({{9, 2}, {1, 1}, {3, 0}}));
+}
+
 TEST_CASE("operator- subtracts term by term") {
     Polynomial a = makePolynomial({{5, 2}, {3, 0}});
     Polynomial b = makePolynomial({{2, 2}, {3, 0}});
@@ -189,13 +218,30 @@ TEST_CASE("compound assignment operators behave like their binary forms") {
     REQUIRE(e == expectedProduct);
 }
 
-TEST_CASE("sortByExponent and mergeLikeTerms normalize a polynomial") {
-    Polynomial p = makePolynomial({{1, 3}});
-    p.insertTerm(2, 5);
+TEST_CASE("sortByExponent orders raw, unsorted terms descending") {
+    Polynomial p;
+    p.appendTermRaw(1, 3);
+    p.appendTermRaw(5, 9);
+    p.appendTermRaw(2, 5);
+    p.sortByExponent();
+    const auto terms = p.terms();
+    REQUIRE_EQ(terms[0].second, 9);
+    REQUIRE_EQ(terms[1].second, 5);
+    REQUIRE_EQ(terms[2].second, 3);
+}
+
+TEST_CASE("mergeLikeTerms sorts and combines raw duplicate terms") {
+    Polynomial p;
+    p.appendTermRaw(1, 3);
+    p.appendTermRaw(4, 5);
+    p.appendTermRaw(3, 3);
     p.mergeLikeTerms();
     const auto terms = p.terms();
+    REQUIRE_EQ(terms.size(), 2u);
     REQUIRE_EQ(terms[0].second, 5);
+    REQUIRE(std::fabs(terms[0].first - 4.0) < 1e-9);
     REQUIRE_EQ(terms[1].second, 3);
+    REQUIRE(std::fabs(terms[1].first - 4.0) < 1e-9);
 }
 
 TEST_CASE("simplify removes zero-coefficient terms") {
@@ -207,12 +253,25 @@ TEST_CASE("simplify removes zero-coefficient terms") {
 
 TEST_CASE("toString renders proper mathematical notation") {
     Polynomial p = makePolynomial({{5, 4}, {3, 2}, {-7, 0}});
+    p.sortByExponent();
     REQUIRE_EQ(p.toString(), std::string("5x") + "⁴" + " + 3x" + "²" + " - 7");
 }
 
 TEST_CASE("toString handles unit coefficients and linear terms") {
     Polynomial p = makePolynomial({{1, 2}, {-1, 1}});
+    p.sortByExponent();
     REQUIRE_EQ(p.toString(), "x² - x");
+}
+
+TEST_CASE("toString faithfully reflects unmerged, unsorted raw terms") {
+    Polynomial p;
+    p.appendTermRaw(3, 2);
+    p.appendTermRaw(4, 2);
+    p.appendTermRaw(-1, 0);
+    // appendTermRaw prepends, so terms appear in reverse insertion order and
+    // the duplicate x^2 terms are not yet combined.
+    REQUIRE_EQ(p.toString(), "-1 + 4x² + 3x²");
+    REQUIRE_EQ(p.termCount(), 3u);
 }
 
 TEST_CASE("toString of the zero polynomial is 0") {

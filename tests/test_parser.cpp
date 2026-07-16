@@ -13,6 +13,16 @@ TEST_CASE("parses a standard multi-term expression") {
     REQUIRE(std::fabs(p.evaluate(1.0) - (3.0 + 4.0 - 8.0)) < 1e-9);
 }
 
+TEST_CASE("parser preserves duplicate exponents until explicitly merged") {
+    Polynomial p = PolynomialParser::parse("3x^2 + 4x^2 - x^2");
+    REQUIRE_EQ(p.termCount(), 3u);
+    REQUIRE(std::fabs(p.evaluate(1.0) - 6.0) < 1e-9);
+
+    p.mergeLikeTerms();
+    REQUIRE_EQ(p.termCount(), 1u);
+    REQUIRE(std::fabs(p.terms()[0].first - 6.0) < 1e-9);
+}
+
 TEST_CASE("parses a single negative term") {
     Polynomial p = PolynomialParser::parse("-5x^3");
     REQUIRE_EQ(p.termCount(), 1u);

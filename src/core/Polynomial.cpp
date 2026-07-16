@@ -65,12 +65,12 @@ bool Polynomial::insertTerm(double coefficient, int exponent) {
 
     Node* previous = nullptr;
     Node* current = head_;
-    while (current != nullptr && current->exponent > exponent) {
+    while (current != nullptr && current->exponent != exponent) {
         previous = current;
         current = current->next;
     }
 
-    if (current != nullptr && current->exponent == exponent) {
+    if (current != nullptr) {
         const double merged = current->coefficient + coefficient;
         if (std::fabs(merged) < kEpsilon) {
             if (previous == nullptr) {
@@ -85,13 +85,18 @@ bool Polynomial::insertTerm(double coefficient, int exponent) {
         return true;
     }
 
-    Node* inserted = new Node(coefficient, exponent, current);
-    if (previous == nullptr) {
-        head_ = inserted;
-    } else {
-        previous->next = inserted;
-    }
+    head_ = new Node(coefficient, exponent, head_);
     return true;
+}
+
+void Polynomial::appendTermRaw(double coefficient, int exponent) {
+    if (exponent < 0) {
+        throw std::invalid_argument("Polynomial term exponent must be non-negative");
+    }
+    if (std::fabs(coefficient) < kEpsilon) {
+        return;
+    }
+    head_ = new Node(coefficient, exponent, head_);
 }
 
 bool Polynomial::deleteTerm(int exponent) {
@@ -176,7 +181,16 @@ bool Polynomial::isZero() const noexcept {
 }
 
 int Polynomial::degree() const noexcept {
-    return head_ == nullptr ? -1 : head_->exponent;
+    if (head_ == nullptr) {
+        return -1;
+    }
+    int maxExponent = head_->exponent;
+    for (Node* current = head_->next; current != nullptr; current = current->next) {
+        if (current->exponent > maxExponent) {
+            maxExponent = current->exponent;
+        }
+    }
+    return maxExponent;
 }
 
 std::size_t Polynomial::termCount() const noexcept {
@@ -193,10 +207,6 @@ double Polynomial::evaluate(double x) const {
         result += current->coefficient * std::pow(x, current->exponent);
     }
     return result;
-}
-
-void Polynomial::pushFront(double coefficient, int exponent) {
-    head_ = new Node(coefficient, exponent, head_);
 }
 
 void Polynomial::pruneZeroCoefficients() noexcept {
@@ -286,6 +296,14 @@ void Polynomial::simplify() {
 }
 
 Polynomial Polynomial::operator+(const Polynomial& rhs) const {
+    // Normalize local copies first: *this or rhs may currently hold
+    // unmerged duplicates or be in arbitrary order (e.g. freshly parsed
+    // input), and the merge below requires two sorted, duplicate-free lists.
+    Polynomial lhs(*this);
+    Polynomial other(rhs);
+    lhs.mergeLikeTerms();
+    other.mergeLikeTerms();
+
     Polynomial result;
     Node* tail = nullptr;
     const auto append = [&](double coefficient, int exponent) {
@@ -301,8 +319,8 @@ Polynomial Polynomial::operator+(const Polynomial& rhs) const {
         tail = node;
     };
 
-    const Node* a = head_;
-    const Node* b = rhs.head_;
+    const Node* a = lhs.head_;
+    const Node* b = other.head_;
     while (a != nullptr && b != nullptr) {
         if (a->exponent == b->exponent) {
             append(a->coefficient + b->coefficient, a->exponent);
@@ -338,13 +356,13 @@ Polynomial Polynomial::operator-(const Polynomial& rhs) const {
 }
 
 Polynomial Polynomial::operator*(const Polynomial& rhs) const {
+    // Correct regardless of input order/duplicates: every pair of terms is
+    // visited exactly once, then a single mergeLikeTerms() pass combines
+    // whatever exponent collisions the products produced.
     Polynomial result;
     for (Node* a = head_; a != nullptr; a = a->next) {
         for (Node* b = rhs.head_; b != nullptr; b = b->next) {
-            const double coefficient = a->coefficient * b->coefficient;
-            if (std::fabs(coefficient) >= kEpsilon) {
-                result.pushFront(coefficient, a->exponent + b->exponent);
-            }
+            result.appendTermRaw(a->coefficient * b->coefficient, a->exponent + b->exponent);
         }
     }
     result.mergeLikeTerms();
@@ -366,9 +384,16 @@ Polynomial& Polynomial::operator*=(const Polynomial& rhs) {
     return *this;
 }
 
-bool Polynomial::operator==(const Polynomial& rhs) const noexcept {
-    Node* a = head_;
-    Node* b = rhs.head_;
+bool Polynomial::operator==(const Polynomial& rhs) const {
+    // Order and duplicate exponents in either operand must not affect
+    // equality, so compare normalized copies rather than the raw lists.
+    Polynomial lhs(*this);
+    Polynomial other(rhs);
+    lhs.mergeLikeTerms();
+    other.mergeLikeTerms();
+
+    Node* a = lhs.head_;
+    Node* b = other.head_;
     while (a != nullptr && b != nullptr) {
         if (a->exponent != b->exponent || std::fabs(a->coefficient - b->coefficient) >= kEpsilon) {
             return false;
@@ -379,7 +404,7 @@ bool Polynomial::operator==(const Polynomial& rhs) const noexcept {
     return a == nullptr && b == nullptr;
 }
 
-bool Polynomial::operator!=(const Polynomial& rhs) const noexcept {
+bool Polynomial::operator!=(const Polynomial& rhs) const {
     return !(*this == rhs);
 }
 

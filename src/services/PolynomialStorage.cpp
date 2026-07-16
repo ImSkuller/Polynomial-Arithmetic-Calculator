@@ -58,7 +58,7 @@ Polynomial PolynomialStorage::load(const std::string& filePath) {
         if (!file) {
             throw std::invalid_argument("Malformed polynomial file: " + filePath);
         }
-        polynomial.insertTerm(coefficient, exponent);
+        polynomial.appendTermRaw(coefficient, exponent);
     }
     return polynomial;
 }

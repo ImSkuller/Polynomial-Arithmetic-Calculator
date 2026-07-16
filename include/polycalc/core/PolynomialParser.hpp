@@ -12,6 +12,10 @@ namespace polycalc {
 // exponent written either as "^N" or as Unicode superscript digits (the same
 // notation Polynomial::toString() produces, so parsing a polynomial's own
 // display string round-trips back to an equal polynomial).
+//
+// Terms are preserved exactly as written, in order, including duplicate
+// exponents (e.g. "3x^2 + 4x^2" parses to two separate terms) - call
+// mergeLikeTerms() or simplify() on the result to combine them.
 class PolynomialParser {
 public:
     // Throws std::invalid_argument with a descriptive message if the
