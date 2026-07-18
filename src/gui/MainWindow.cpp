@@ -7,6 +7,7 @@
 
 #include "polycalc/Version.hpp"
 #include "polycalc/core/Formatting.hpp"
+#include "polycalc/gui/HelpWindow.hpp"
 
 namespace polycalc::gui {
 
@@ -812,8 +813,6 @@ void MainWindow::onRefreshStatistics() {
     logInfo("Statistics refreshed.");
 }
 
-void MainWindow::onShowHelp() {
-    MessageBoxW(hwnd_, L"Help window coming soon.", L"Help / How it works", MB_OK | MB_ICONINFORMATION);
-}
+void MainWindow::onShowHelp() { ShowHelpWindow(hwnd_, instance_); }
 
 } // namespace polycalc::gui

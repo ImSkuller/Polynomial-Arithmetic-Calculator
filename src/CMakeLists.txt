@@ -8,6 +8,7 @@ add_library(polycalc_core
     services/HistoryManager.cpp
     gui/WinUtil.cpp
     gui/MainWindow.cpp
+    gui/HelpWindow.cpp
     Application.cpp
 )
 
