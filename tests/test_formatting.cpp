@@ -30,10 +30,3 @@ TEST_CASE("formatCoefficient trims integral values and keeps fractions") {
     REQUIRE_EQ(formatCoefficient(-7.0), "-7");
     REQUIRE_EQ(formatCoefficient(2.5), "2.5");
 }
-
-TEST_CASE("displayWidth counts codepoints, not bytes") {
-    REQUIRE_EQ(displayWidth("x"), 1u);
-    REQUIRE_EQ(displayWidth("x²"), 2u);
-    REQUIRE_EQ(displayWidth("5x⁴ + 3x² - 7"), 13u);
-    REQUIRE_EQ(displayWidth(""), 0u);
-}

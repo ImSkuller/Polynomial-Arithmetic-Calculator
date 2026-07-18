@@ -222,10 +222,9 @@ void MainWindow::createControls() {
     using namespace metrics;
 
     RECT bannerRect{kMargin, kMargin, kClientWidth - kMargin - 110, kMargin + 24};
-    currentPolyLabel_ =
-        CreateLabel(hwnd_, instance_, bannerRect,
-                    Utf8ToWide(std::string(kApplicationName) + " - build, edit, and compute "
-                                                                "with polynomials"));
+    CreateLabel(hwnd_, instance_, bannerRect,
+                Utf8ToWide(std::string(kApplicationName) + " - build, edit, and compute "
+                                                            "with polynomials"));
 
     RECT helpButtonRect{kClientWidth - kMargin - 100, kMargin, kClientWidth - kMargin, kMargin + 26};
     CreateButtonCtrl(hwnd_, instance_, helpButtonRect, L"Help / How it works", kIdHelpButton);

@@ -68,24 +68,4 @@ bool fromSuperscript(const std::string& text, int& exponent) {
     return true;
 }
 
-std::size_t displayWidth(const std::string& text) {
-    std::size_t width = 0;
-    for (std::size_t i = 0; i < text.size();) {
-        const auto lead = static_cast<unsigned char>(text[i]);
-        std::size_t sequenceLength = 1;
-        if ((lead & 0x80) == 0x00) {
-            sequenceLength = 1;
-        } else if ((lead & 0xE0) == 0xC0) {
-            sequenceLength = 2;
-        } else if ((lead & 0xF0) == 0xE0) {
-            sequenceLength = 3;
-        } else if ((lead & 0xF8) == 0xF0) {
-            sequenceLength = 4;
-        }
-        i += sequenceLength;
-        ++width;
-    }
-    return width;
-}
-
 } // namespace polycalc

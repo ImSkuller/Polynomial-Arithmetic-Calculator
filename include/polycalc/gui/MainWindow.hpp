@@ -27,8 +27,7 @@ private:
     HWND hwnd_ = nullptr;
     Application app_;
 
-    // Read-only displays kept in sync with the session state.
-    HWND currentPolyLabel_ = nullptr;
+    // Read-only display kept in sync with the session state.
     HWND currentDegreeLabel_ = nullptr;
     HWND logBox_ = nullptr;
 

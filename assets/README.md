@@ -1,11 +1,7 @@
 # Assets
 
-This folder holds real terminal screenshots of the application in use (the
-main menu, the statistics screen, the box-drawn table output, etc.) for the
-project README and any written report.
-
-A text-based sample of the actual console output is already embedded in the
-top-level [README.md](../README.md); drop PNG/JPG captures here and link
-them from there once available - a terminal with 256-color or truecolor
-support (Windows Terminal, iTerm2, most modern Linux terminal emulators)
-shows the colored version of the same output.
+This folder holds real screenshots of the application's window in use (the
+main layout, an arithmetic result, the Statistics panel, the Help window,
+etc.) for the project README and any written report. None are checked in
+yet - drop PNG/JPG captures here and link them from the top-level
+[README.md](../README.md) once available.
