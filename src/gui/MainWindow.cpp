@@ -18,7 +18,13 @@ constexpr wchar_t kWindowClassName[] = L"PolycalcMainWindow";
 // panel without scrolling - see the README for why a GUI this size doesn't
 // need a resizable layout engine.
 constexpr int kClientWidth = 970;
-constexpr int kClientHeight = 960;
+constexpr int kClientHeight = 900;
+
+// A handful of rows pack a short label, an edit box, and sometimes a button
+// on one line to keep panels compact; this is the narrow label width used
+// only on those rows (the full kLabelWidth would leave no room for the
+// edit box next to it).
+constexpr int kMiniLabelWidth = 46;
 
 // Where the two side-by-side panel columns begin, and how wide each is.
 // The current-polynomial banner occupies the space above this.
@@ -58,6 +64,9 @@ enum ControlId : int {
     kIdBrowseFile,
     kIdSave,
     kIdLoad,
+
+    kIdGenerateRandom,
+    kIdRefreshStatistics,
 };
 
 // Height of a group box's title strip plus its bottom padding, given how
@@ -213,11 +222,15 @@ void MainWindow::createControls() {
     rightY += metrics::kGroupGap;
     createAnalyzePanel(kRightColumnX, rightY, kColumnWidth, rightY);
     rightY += metrics::kGroupGap;
+    createRandomGeneratorPanel(kRightColumnX, rightY, kColumnWidth, rightY);
+    rightY += metrics::kGroupGap;
+    createStatisticsPanel(kRightColumnX, rightY, kColumnWidth, rightY);
+    rightY += metrics::kGroupGap;
 }
 
 void MainWindow::createBuildAndEditPanel(int x, int y, int width, int& bottomY) {
     using namespace metrics;
-    constexpr int kRows = 8;
+    constexpr int kRows = 7;
     const RECT groupRect{x, y, x + width, y + groupBoxHeight(kRows)};
     CreateGroupBox(hwnd_, instance_, groupRect, L"Build && Edit P(x)", -1);
 
@@ -233,17 +246,19 @@ void MainWindow::createBuildAndEditPanel(int x, int y, int width, int& bottomY) 
     CreateButtonCtrl(hwnd_, instance_, row, L"Set P(x) from expression (e.g. 3x^2 + 4x - 8)",
                       kIdSetExpression);
 
+    // Exponent and coefficient share one row: each half gets its own short
+    // label so the pair reads as "Exponent: [_] Coefficient: [_]".
     row = col.nextRow();
-    CreateLabel(hwnd_, instance_, RECT{row.left, row.top, row.left + kLabelWidth, row.bottom},
-                L"Exponent:");
+    RECT half = splitRect(row, 0, 2, 16);
+    CreateLabel(hwnd_, instance_, RECT{half.left, half.top, half.left + kMiniLabelWidth, half.bottom},
+                L"Exp:");
     exponentBox_ = CreateEditBox(
-        hwnd_, instance_, RECT{row.left + kLabelWidth, row.top, row.right, row.bottom}, -1);
-
-    row = col.nextRow();
-    CreateLabel(hwnd_, instance_, RECT{row.left, row.top, row.left + kLabelWidth, row.bottom},
-                L"Coefficient:");
+        hwnd_, instance_, RECT{half.left + kMiniLabelWidth, half.top, half.right, half.bottom}, -1);
+    half = splitRect(row, 1, 2, 16);
+    CreateLabel(hwnd_, instance_, RECT{half.left, half.top, half.left + kMiniLabelWidth, half.bottom},
+                L"Coef:");
     coefficientBox_ = CreateEditBox(
-        hwnd_, instance_, RECT{row.left + kLabelWidth, row.top, row.right, row.bottom}, -1);
+        hwnd_, instance_, RECT{half.left + kMiniLabelWidth, half.top, half.right, half.bottom}, -1);
 
     row = col.nextRow();
     CreateButtonCtrl(hwnd_, instance_, splitRect(row, 0, 2), L"Insert Term", kIdInsertTerm);
@@ -270,20 +285,25 @@ void MainWindow::createBuildAndEditPanel(int x, int y, int width, int& bottomY) 
 
 void MainWindow::createArithmeticPanel(int x, int y, int width, int& bottomY) {
     using namespace metrics;
-    constexpr int kRows = 6;
+    constexpr int kRows = 5;
     const RECT groupRect{x, y, x + width, y + groupBoxHeight(kRows)};
     CreateGroupBox(hwnd_, instance_, groupRect, L"Second Polynomial Q(x) && Arithmetic", -1);
 
     ColumnLayout col(x + 10, y + kGroupTitleGap, width - 20);
 
+    // Expression, edit, and "Set" button share one row to save vertical
+    // space - the row is wide enough for a fixed label, a flexible edit
+    // box, and a fixed-width button on the right.
+    constexpr int kSetButtonWidth = 96;
     RECT row = col.nextRow();
     CreateLabel(hwnd_, instance_, RECT{row.left, row.top, row.left + kLabelWidth, row.bottom},
                 L"Expression Q:");
     secondaryExpressionBox_ = CreateEditBox(
-        hwnd_, instance_, RECT{row.left + kLabelWidth, row.top, row.right, row.bottom}, -1);
-
-    row = col.nextRow();
-    CreateButtonCtrl(hwnd_, instance_, row, L"Set Q(x) from expression", kIdSetSecondary);
+        hwnd_, instance_,
+        RECT{row.left + kLabelWidth, row.top, row.right - kSetButtonWidth - 6, row.bottom}, -1);
+    CreateButtonCtrl(hwnd_, instance_,
+                      RECT{row.right - kSetButtonWidth, row.top, row.right, row.bottom},
+                      L"Set Q(x)", kIdSetSecondary);
 
     row = col.nextRow();
     secondaryLabel_ = CreateLabel(hwnd_, instance_, row, L"Q(x) = 0");
@@ -304,35 +324,34 @@ void MainWindow::createArithmeticPanel(int x, int y, int width, int& bottomY) {
 
 void MainWindow::createAnalyzePanel(int x, int y, int width, int& bottomY) {
     using namespace metrics;
-    constexpr int kRows = 7;
+    constexpr int kRows = 4;
     const RECT groupRect{x, y, x + width, y + groupBoxHeight(kRows)};
     CreateGroupBox(hwnd_, instance_, groupRect, L"Analyze", -1);
 
     ColumnLayout col(x + 10, y + kGroupTitleGap, width - 20);
 
+    constexpr int kEvaluateButtonWidth = 110;
     RECT row = col.nextRow();
-    CreateLabel(hwnd_, instance_, RECT{row.left, row.top, row.left + kLabelWidth, row.bottom},
-                L"Value of x:");
+    CreateLabel(hwnd_, instance_, RECT{row.left, row.top, row.left + kMiniLabelWidth, row.bottom},
+                L"x =");
     xValueBox_ = CreateEditBox(
-        hwnd_, instance_, RECT{row.left + kLabelWidth, row.top, row.right, row.bottom}, -1);
-
-    row = col.nextRow();
-    CreateButtonCtrl(hwnd_, instance_, row, L"Evaluate P(x)", kIdEvaluate);
+        hwnd_, instance_,
+        RECT{row.left + kMiniLabelWidth, row.top, row.right - kEvaluateButtonWidth - 6, row.bottom},
+        -1);
+    CreateButtonCtrl(hwnd_, instance_,
+                      RECT{row.right - kEvaluateButtonWidth, row.top, row.right, row.bottom},
+                      L"Evaluate P(x)", kIdEvaluate);
 
     row = col.nextRow();
     evaluateResultLabel_ = CreateLabel(hwnd_, instance_, row, L"Result: (evaluate above)");
 
+    // Sort, merge, and simplify are alternative "put the polynomial in
+    // canonical form" operations - grouping them on one row reads as a set
+    // of related choices rather than three unrelated steps.
     row = col.nextRow();
-    CreateButtonCtrl(hwnd_, instance_, row,
-                      L"Sort by Exponent (merge sort, descending, O(n log n))", kIdSort);
-
-    row = col.nextRow();
-    CreateButtonCtrl(hwnd_, instance_, row, L"Merge Like Terms (combine duplicate exponents)",
-                      kIdMerge);
-
-    row = col.nextRow();
-    CreateButtonCtrl(hwnd_, instance_, row, L"Simplify (sort + merge + drop zero terms)",
-                      kIdSimplify);
+    CreateButtonCtrl(hwnd_, instance_, splitRect(row, 0, 3), L"Sort", kIdSort);
+    CreateButtonCtrl(hwnd_, instance_, splitRect(row, 1, 3), L"Merge Like Terms", kIdMerge);
+    CreateButtonCtrl(hwnd_, instance_, splitRect(row, 2, 3), L"Simplify", kIdSimplify);
 
     row = col.nextRow();
     timingLabel_ = CreateLabel(hwnd_, instance_, row, L"Last operation took: -");
@@ -376,6 +395,64 @@ void MainWindow::createSaveLoadPanel(int x, int y, int width, int& bottomY) {
     CreateButtonCtrl(hwnd_, instance_, splitRect(row, 0, 3), L"Browse...", kIdBrowseFile);
     CreateButtonCtrl(hwnd_, instance_, splitRect(row, 1, 3), L"Save", kIdSave);
     CreateButtonCtrl(hwnd_, instance_, splitRect(row, 2, 3), L"Load", kIdLoad);
+
+    bottomY = groupRect.bottom;
+}
+
+void MainWindow::createRandomGeneratorPanel(int x, int y, int width, int& bottomY) {
+    using namespace metrics;
+    constexpr int kRows = 3;
+    const RECT groupRect{x, y, x + width, y + groupBoxHeight(kRows)};
+    CreateGroupBox(hwnd_, instance_, groupRect, L"Random Generator", -1);
+
+    ColumnLayout col(x + 10, y + kGroupTitleGap, width - 20);
+
+    RECT row = col.nextRow();
+    RECT half = splitRect(row, 0, 2, 16);
+    CreateLabel(hwnd_, instance_, RECT{half.left, half.top, half.left + kMiniLabelWidth, half.bottom},
+                L"Terms:");
+    genTermCountBox_ = CreateEditBox(
+        hwnd_, instance_, RECT{half.left + kMiniLabelWidth, half.top, half.right, half.bottom}, -1);
+    half = splitRect(row, 1, 2, 16);
+    CreateLabel(hwnd_, instance_, RECT{half.left, half.top, half.left + kMiniLabelWidth, half.bottom},
+                L"Max exp:");
+    genMaxExponentBox_ = CreateEditBox(
+        hwnd_, instance_, RECT{half.left + kMiniLabelWidth, half.top, half.right, half.bottom}, -1);
+
+    row = col.nextRow();
+    half = splitRect(row, 0, 2, 16);
+    CreateLabel(hwnd_, instance_, RECT{half.left, half.top, half.left + kMiniLabelWidth, half.bottom},
+                L"Min c:");
+    genMinCoefficientBox_ = CreateEditBox(
+        hwnd_, instance_, RECT{half.left + kMiniLabelWidth, half.top, half.right, half.bottom}, -1);
+    half = splitRect(row, 1, 2, 16);
+    CreateLabel(hwnd_, instance_, RECT{half.left, half.top, half.left + kMiniLabelWidth, half.bottom},
+                L"Max c:");
+    genMaxCoefficientBox_ = CreateEditBox(
+        hwnd_, instance_, RECT{half.left + kMiniLabelWidth, half.top, half.right, half.bottom}, -1);
+
+    row = col.nextRow();
+    CreateButtonCtrl(hwnd_, instance_, row, L"Generate Random Polynomial", kIdGenerateRandom);
+
+    bottomY = groupRect.bottom;
+}
+
+void MainWindow::createStatisticsPanel(int x, int y, int width, int& bottomY) {
+    using namespace metrics;
+    constexpr int kStatsBoxHeight = 80;
+    const RECT groupRect{x, y,
+                          x + width,
+                          y + kGroupTitleGap + kRowHeight + kRowSpacing + kStatsBoxHeight + 8};
+    CreateGroupBox(hwnd_, instance_, groupRect, L"Statistics && Performance", -1);
+
+    ColumnLayout col(x + 10, y + kGroupTitleGap, width - 20);
+
+    RECT row = col.nextRow();
+    CreateButtonCtrl(hwnd_, instance_, row, L"Refresh Statistics", kIdRefreshStatistics);
+
+    row = col.nextRow(kStatsBoxHeight);
+    statsBox_ =
+        CreateEditBox(hwnd_, instance_, row, -1, /*readOnly=*/true, /*multiline=*/true);
 
     bottomY = groupRect.bottom;
 }
@@ -444,6 +521,12 @@ void MainWindow::onCommand(int controlId) {
             break;
         case kIdLoad:
             onLoad();
+            break;
+        case kIdGenerateRandom:
+            onGenerateRandom();
+            break;
+        case kIdRefreshStatistics:
+            onRefreshStatistics();
             break;
         default:
             break;
@@ -696,6 +779,37 @@ void MainWindow::onBrowseFile() {
     if (GetOpenFileNameW(&dialog) != 0) {
         SetControlTextUtf8(filePathBox_, WideToUtf8(pathBuffer));
     }
+}
+
+void MainWindow::onGenerateRandom() {
+    try {
+        PolynomialGenerator::Options options;
+        options.termCount = parseIntField(genTermCountBox_, "term count");
+        options.maxExponent = parseIntField(genMaxExponentBox_, "max exponent");
+        options.minCoefficient = parseDoubleField(genMinCoefficientBox_, "min coefficient");
+        options.maxCoefficient = parseDoubleField(genMaxCoefficientBox_, "max coefficient");
+
+        app_.generateRandom(options);
+        refreshCurrentDisplay();
+        logSuccess("Generated. P(x) = " + app_.currentText());
+    } catch (const std::exception& ex) {
+        logError(ex.what());
+    }
+}
+
+void MainWindow::onRefreshStatistics() {
+    const Statistics stats = app_.statistics();
+    const std::string degreeText = stats.degree < 0 ? "-" : std::to_string(stats.degree);
+    const std::string table =
+        "Term count:              " + std::to_string(stats.termCount) + "\r\n" +
+        "Degree:                  " + degreeText + "\r\n" +
+        "Estimated memory:        " + std::to_string(stats.memoryBytes) + " bytes\r\n" +
+        "sortByExponent() time:   " + formatCoefficient(stats.sortMs) + " ms\r\n" +
+        "mergeLikeTerms() time:   " + formatCoefficient(stats.mergeMs) + " ms\r\n" +
+        "simplify() time:         " + formatCoefficient(stats.simplifyMs) + " ms\r\n" +
+        "evaluate(2) time:        " + formatCoefficient(stats.evaluateMs) + " ms";
+    SetControlTextUtf8(statsBox_, table);
+    logInfo("Statistics refreshed.");
 }
 
 void MainWindow::onShowHelp() {

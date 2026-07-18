@@ -56,6 +56,15 @@ private:
     // Save & Load panel.
     HWND filePathBox_ = nullptr;
 
+    // Random Generator panel.
+    HWND genTermCountBox_ = nullptr;
+    HWND genMaxExponentBox_ = nullptr;
+    HWND genMinCoefficientBox_ = nullptr;
+    HWND genMaxCoefficientBox_ = nullptr;
+
+    // Statistics panel.
+    HWND statsBox_ = nullptr;
+
     static LRESULT CALLBACK WndProcThunk(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
     LRESULT handleMessage(UINT message, WPARAM wParam, LPARAM lParam);
 
@@ -65,6 +74,8 @@ private:
     void createAnalyzePanel(int x, int y, int width, int& bottomY);
     void createHistoryPanel(int x, int y, int width, int& bottomY);
     void createSaveLoadPanel(int x, int y, int width, int& bottomY);
+    void createRandomGeneratorPanel(int x, int y, int width, int& bottomY);
+    void createStatisticsPanel(int x, int y, int width, int& bottomY);
     void onCommand(int controlId);
 
     void refreshCurrentDisplay();
@@ -96,6 +107,8 @@ private:
     void onSave();
     void onLoad();
     void onBrowseFile();
+    void onGenerateRandom();
+    void onRefreshStatistics();
 
     void onShowHelp();
 };
