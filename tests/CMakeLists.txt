@@ -7,6 +7,7 @@ add_executable(polycalc_tests
     test_history_manager.cpp
     test_console.cpp
     test_formatting.cpp
+    test_application.cpp
 )
 
 target_link_libraries(polycalc_tests PRIVATE polycalc_core)
