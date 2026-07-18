@@ -4,6 +4,7 @@
 
 #include <cwchar>
 #include <stdexcept>
+#include <unordered_map>
 
 #include "polycalc/Version.hpp"
 #include "polycalc/core/Formatting.hpp"
@@ -107,6 +108,29 @@ int parseIntField(HWND control, const std::string& fieldName) {
     }
 }
 
+// Lets a single-line edit box act like it's the only field in a tiny form:
+// pressing Enter fires the same WM_COMMAND its associated button would, so
+// typing an expression and hitting Enter works the way anyone used to a
+// search box or address bar would expect, instead of requiring a mouse
+// click on a button that's already right there on screen.
+std::unordered_map<HWND, WNDPROC> gOriginalEditProcs;
+
+LRESULT CALLBACK EnterKeySubmitProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    if (message == WM_KEYDOWN && wParam == VK_RETURN) {
+        const int commandId = static_cast<int>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+        PostMessageW(GetParent(hwnd), WM_COMMAND, MAKEWPARAM(commandId, BN_CLICKED), 0);
+        return 0;
+    }
+    return CallWindowProcW(gOriginalEditProcs.at(hwnd), hwnd, message, wParam, lParam);
+}
+
+void submitOnEnter(HWND editControl, int commandId) {
+    SetWindowLongPtrW(editControl, GWLP_USERDATA, static_cast<LONG_PTR>(commandId));
+    gOriginalEditProcs[editControl] = reinterpret_cast<WNDPROC>(
+        SetWindowLongPtrW(editControl, GWLP_WNDPROC,
+                          reinterpret_cast<LONG_PTR>(&EnterKeySubmitProc)));
+}
+
 } // namespace
 
 MainWindow::MainWindow(HINSTANCE instance) : instance_(instance) {
@@ -142,6 +166,10 @@ MainWindow::MainWindow(HINSTANCE instance) : instance_(instance) {
 void MainWindow::show(int showCommand) {
     ShowWindow(hwnd_, showCommand);
     UpdateWindow(hwnd_);
+    // Set once the window is actually shown/activated - setting it during
+    // WM_CREATE gets silently overridden by the window activation that
+    // follows ShowWindow.
+    SetFocus(expressionBox_);
 }
 
 int MainWindow::runMessageLoop() {
@@ -242,6 +270,7 @@ void MainWindow::createBuildAndEditPanel(int x, int y, int width, int& bottomY) 
                 L"Expression:");
     expressionBox_ = CreateEditBox(
         hwnd_, instance_, RECT{row.left + kLabelWidth, row.top, row.right, row.bottom}, -1);
+    submitOnEnter(expressionBox_, kIdSetExpression);
 
     row = col.nextRow();
     CreateButtonCtrl(hwnd_, instance_, row, L"Set P(x) from expression (e.g. 3x^2 + 4x - 8)",
@@ -302,6 +331,7 @@ void MainWindow::createArithmeticPanel(int x, int y, int width, int& bottomY) {
     secondaryExpressionBox_ = CreateEditBox(
         hwnd_, instance_,
         RECT{row.left + kLabelWidth, row.top, row.right - kSetButtonWidth - 6, row.bottom}, -1);
+    submitOnEnter(secondaryExpressionBox_, kIdSetSecondary);
     CreateButtonCtrl(hwnd_, instance_,
                       RECT{row.right - kSetButtonWidth, row.top, row.right, row.bottom},
                       L"Set Q(x)", kIdSetSecondary);
@@ -339,6 +369,8 @@ void MainWindow::createAnalyzePanel(int x, int y, int width, int& bottomY) {
         hwnd_, instance_,
         RECT{row.left + kMiniLabelWidth, row.top, row.right - kEvaluateButtonWidth - 6, row.bottom},
         -1);
+    submitOnEnter(xValueBox_, kIdEvaluate);
+    SetControlTextUtf8(xValueBox_, "2");
     CreateButtonCtrl(hwnd_, instance_,
                       RECT{row.right - kEvaluateButtonWidth, row.top, row.right, row.bottom},
                       L"Evaluate P(x)", kIdEvaluate);
@@ -431,6 +463,15 @@ void MainWindow::createRandomGeneratorPanel(int x, int y, int width, int& bottom
                 L"Max c:");
     genMaxCoefficientBox_ = CreateEditBox(
         hwnd_, instance_, RECT{half.left + kMiniLabelWidth, half.top, half.right, half.bottom}, -1);
+
+    // Pre-filled with PolynomialGenerator::Options' own defaults, so
+    // clicking Generate immediately works instead of failing validation on
+    // four empty fields.
+    const PolynomialGenerator::Options defaults;
+    SetControlTextUtf8(genTermCountBox_, std::to_string(defaults.termCount));
+    SetControlTextUtf8(genMaxExponentBox_, std::to_string(defaults.maxExponent));
+    SetControlTextUtf8(genMinCoefficientBox_, formatCoefficient(defaults.minCoefficient));
+    SetControlTextUtf8(genMaxCoefficientBox_, formatCoefficient(defaults.maxCoefficient));
 
     row = col.nextRow();
     CreateButtonCtrl(hwnd_, instance_, row, L"Generate Random Polynomial", kIdGenerateRandom);
