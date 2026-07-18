@@ -32,17 +32,46 @@ private:
     HWND currentDegreeLabel_ = nullptr;
     HWND logBox_ = nullptr;
 
+    // Build & Edit P(x) panel.
+    HWND expressionBox_ = nullptr;
+    HWND exponentBox_ = nullptr;
+    HWND coefficientBox_ = nullptr;
+    HWND newExponentBox_ = nullptr;
+
+    // Second polynomial Q(x) & arithmetic panel.
+    HWND secondaryExpressionBox_ = nullptr;
+    HWND secondaryLabel_ = nullptr;
+    HWND arithmeticResultLabel_ = nullptr;
+    Polynomial lastArithmeticResult_;
+    bool hasArithmeticResult_ = false;
+
     static LRESULT CALLBACK WndProcThunk(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
     LRESULT handleMessage(UINT message, WPARAM wParam, LPARAM lParam);
 
     void createControls();
+    void createBuildAndEditPanel(int x, int y, int width, int& bottomY);
+    void createArithmeticPanel(int x, int y, int width, int& bottomY);
     void onCommand(int controlId);
 
     void refreshCurrentDisplay();
+    void refreshSecondaryDisplay();
     void appendLog(const std::string& tag, const std::string& message);
     void logSuccess(const std::string& message);
     void logError(const std::string& message);
     void logInfo(const std::string& message);
+
+    // Each wraps its Application call in try/catch and reports the outcome
+    // to the activity log, so a malformed expression or out-of-range input
+    // never does anything worse than print an [ERROR] line.
+    void onSetCurrentFromExpression();
+    void onInsertTerm();
+    void onDeleteTerm();
+    void onUpdateCoefficient();
+    void onUpdateExponent();
+    void onClearCurrent();
+    void onSetSecondaryFromExpression();
+    void onArithmetic(int operation);
+    void onUseResultAsCurrent();
 
     void onShowHelp();
 };
