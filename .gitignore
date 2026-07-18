@@ -5,14 +5,14 @@ out/
 bin/
 cmake-build-*/
 
-# CMake artifacts
+# CMake artifacts (generated wherever CMake is configured, not just build/)
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 CTestTestfile.cmake
 Testing/
-*.cmake
-!CMakeLists.txt
+*.dir/
+CMakeUserPresets.json
 
 # Compiled objects / binaries
 *.obj
@@ -23,17 +23,44 @@ Testing/
 *.pdb
 *.ilk
 *.exp
+*.map
 
 # Visual Studio / MSVC
 .vs/
 *.user
 *.sln
 *.vcxproj*
+*.suo
+*.aps
+ipch/
 
-# Editor
+# Editors
 .vscode/
 .idea/
+*.swp
+*~
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and crash dumps
+*.log
+*.dmp
+
+# Secrets / local environment - never commit these
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+credentials.json
 
 # Saved polynomial data produced at runtime
 saved/
 *.poly
+
+# Internal developer notes - not part of the published project;
+# user-facing documentation now lives in the GUI's Help window and README.
+docs/
