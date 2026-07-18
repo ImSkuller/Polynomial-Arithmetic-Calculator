@@ -17,7 +17,12 @@ public:
 
     // Throws std::invalid_argument if the options describe an empty or
     // inverted range.
-    static Polynomial generate(const Options& options = Options{});
+    static Polynomial generate(const Options& options);
+
+    // Generates with default Options. (A separate overload rather than a
+    // default argument of Options{}: GCC rejects an in-class default
+    // argument that requires the enclosing class's NSDMIs to be complete.)
+    static Polynomial generate() { return generate(Options{}); }
 };
 
 } // namespace polycalc

@@ -75,6 +75,29 @@ TEST_CASE("PolynomialStorage round-trips a polynomial through a file") {
     REQUIRE(original == loaded);
 }
 
+TEST_CASE("PolynomialStorage preserves full double precision and term order") {
+    // Regression: the default stream precision (6 significant digits)
+    // silently corrupted coefficients on load, and loading through a
+    // prepending appendTermRaw reversed the stored term order.
+    Polynomial original;
+    original.appendTermRaw(0.12345678901234567, 3);
+    original.appendTermRaw(-7.000000123456789, 1);
+    original.appendTermRaw(1.0 / 3.0, 0);
+
+    const auto path = std::filesystem::temp_directory_path() / "polycalc_precision_test.poly";
+    PolynomialStorage::save(original, path.string());
+    Polynomial loaded = PolynomialStorage::load(path.string());
+    std::filesystem::remove(path);
+
+    const auto before = original.terms();
+    const auto after = loaded.terms();
+    REQUIRE_EQ(before.size(), after.size());
+    for (std::size_t i = 0; i < before.size(); ++i) {
+        REQUIRE_EQ(before[i].second, after[i].second);   // same order
+        REQUIRE(before[i].first == after[i].first);      // bit-exact value
+    }
+}
+
 TEST_CASE("PolynomialStorage load rejects a missing file") {
     bool threw = false;
     try {

@@ -168,12 +168,12 @@ Two insertion primitives exist, with deliberately different contracts:
   zero); otherwise it prepends a new node. This guarantees **no duplicate
   exponents**, but does **not** impose any particular order. The Build &
   Edit panel's Insert Term button calls this.
-- **`appendTermRaw`** unconditionally prepends a new node, even if a term
-  with that exponent already exists. The expression parser and the file
-  loader use this, so that parsing `3x^2 + 4x^2` faithfully preserves both
-  terms - exactly as a student working through the algorithm by hand would
-  expect - until `mergeLikeTerms()` or `simplify()` is explicitly invoked
-  from the Analyze panel.
+- **`appendTermRaw`** unconditionally appends a new node at the tail, even
+  if a term with that exponent already exists. The expression parser and the
+  file loader use this, so that parsing `3x^2 + 4x^2` faithfully preserves
+  both terms in the order they were typed - exactly as a student working
+  through the algorithm by hand would expect - until `mergeLikeTerms()` or
+  `simplify()` is explicitly invoked from the Analyze panel.
 
 This is a deliberate design choice: an earlier version of this project had
 `insertTerm` also maintain sort order automatically, which made "Sort by
@@ -214,7 +214,7 @@ operand where only one is involved).
 | Operation                          | Time              | Notes |
 |-------------------------------------|-------------------|-------|
 | `insertTerm` / `deleteTerm` / `updateCoefficient` / `updateExponent` | O(n) | Linear search by exponent |
-| `appendTermRaw`                     | O(1)              | Unconditional prepend |
+| `appendTermRaw`                     | O(n)              | Unconditional tail append (walks to the tail so input order is preserved) |
 | `degree`                            | O(n)              | Scans for the maximum exponent |
 | `termCount`, `evaluate`, `toString`, `terms()` | O(n)   | Single traversal |
 | `sortByExponent`                    | O(n log n)        | Merge sort |

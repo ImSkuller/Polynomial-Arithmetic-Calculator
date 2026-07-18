@@ -15,8 +15,8 @@ namespace polycalc {
 // insertTerm() guarantees no two nodes share an exponent (merging into an
 // existing term, or removing it if the merge cancels to zero) but does not
 // maintain any particular node order - a new, non-duplicate term is simply
-// prepended. appendTermRaw() is more primitive still: it appends a node
-// unconditionally, without checking for an existing same-exponent term, so
+// prepended. appendTermRaw() is more primitive still: it appends a node at
+// the tail unconditionally, without checking for an existing same-exponent term, so
 // duplicate exponents and arbitrary order can arise. That is exactly what
 // the expression parser and file loader use, so that parsing
 // "3x^2 + 4x^2" faithfully preserves both terms until the user explicitly
@@ -46,12 +46,12 @@ public:
     // is negative.
     bool insertTerm(double coefficient, int exponent);
 
-    // Unconditionally prepends a new node for coefficient*x^exponent, even
-    // if a term with the same exponent already exists. Used internally by
-    // the parser and file loader to preserve input exactly as given; prefer
-    // insertTerm() for ordinary single-term edits. Throws
-    // std::invalid_argument if exponent is negative. A zero coefficient is
-    // silently ignored, since a zero term is not a term.
+    // Unconditionally appends a new node for coefficient*x^exponent at the
+    // tail, even if a term with the same exponent already exists. Used
+    // internally by the parser and file loader to preserve input order
+    // exactly as given; prefer insertTerm() for ordinary single-term edits.
+    // Throws std::invalid_argument if exponent is negative. A zero
+    // coefficient is silently ignored, since a zero term is not a term.
     void appendTermRaw(double coefficient, int exponent);
 
     // Removes the first term found with the given exponent. Returns true if

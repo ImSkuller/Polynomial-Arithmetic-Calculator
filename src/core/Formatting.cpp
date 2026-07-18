@@ -28,6 +28,13 @@ std::string toSuperscript(int exponent) {
     std::string result;
     result.reserve(digits.size() * 2);
     for (const char digit : digits) {
+        if (digit == '-') {
+            // Polynomial exponents are never negative, but indexing the
+            // digit table with '-' - '0' would be out of bounds; render a
+            // superscript minus instead of invoking undefined behavior.
+            result += "⁻";
+            continue;
+        }
         result += kSuperscriptDigits[static_cast<std::size_t>(digit - '0')];
     }
     return result;
@@ -35,7 +42,14 @@ std::string toSuperscript(int exponent) {
 
 std::string formatCoefficient(double value) {
     std::ostringstream stream;
-    if (std::fabs(value - std::round(value)) < kIntegralDisplayTolerance) {
+    // The integral fast path must stay within the range where llround is
+    // defined and a double still represents integers exactly; beyond it a
+    // value like 1e300 would overflow llround and print garbage
+    // (-9223372036854775808). 1e15 < 2^53, so every integer below it is
+    // exact.
+    constexpr double kMaxIntegralDisplay = 1e15;
+    if (std::fabs(value) < kMaxIntegralDisplay &&
+        std::fabs(value - std::round(value)) < kIntegralDisplayTolerance) {
         stream << static_cast<long long>(std::llround(value));
     } else {
         stream << std::setprecision(6) << value;
@@ -64,7 +78,14 @@ bool fromSuperscript(const std::string& text, int& exponent) {
     if (digits.empty()) {
         return false;
     }
-    exponent = std::stoi(digits);
+    try {
+        exponent = std::stoi(digits);
+    } catch (...) {
+        // e.g. a superscript number wider than int: report "not a valid
+        // superscript exponent" instead of leaking std::out_of_range from
+        // stoi to callers that only expect a bool.
+        return false;
+    }
     return true;
 }
 

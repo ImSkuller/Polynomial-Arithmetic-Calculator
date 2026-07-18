@@ -1,6 +1,8 @@
 #include "polycalc/services/PolynomialStorage.hpp"
 
 #include <fstream>
+#include <iomanip>
+#include <limits>
 #include <stdexcept>
 
 namespace polycalc {
@@ -17,6 +19,10 @@ void PolynomialStorage::save(const Polynomial& polynomial, const std::string& fi
     }
 
     const auto terms = polynomial.terms();
+    // max_digits10 guarantees the double survives the text round trip
+    // exactly; the default stream precision (6 significant digits) silently
+    // corrupted coefficients on load.
+    file << std::setprecision(std::numeric_limits<double>::max_digits10);
     file << kFileHeader << ' ' << kFileVersion << '\n';
     file << terms.size() << '\n';
     for (const auto& [coefficient, exponent] : terms) {

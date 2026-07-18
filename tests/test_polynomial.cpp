@@ -268,9 +268,9 @@ TEST_CASE("toString faithfully reflects unmerged, unsorted raw terms") {
     p.appendTermRaw(3, 2);
     p.appendTermRaw(4, 2);
     p.appendTermRaw(-1, 0);
-    // appendTermRaw prepends, so terms appear in reverse insertion order and
-    // the duplicate x^2 terms are not yet combined.
-    REQUIRE_EQ(p.toString(), "-1 + 4x² + 3x²");
+    // appendTermRaw appends at the tail, so terms appear exactly in
+    // insertion order and the duplicate x^2 terms are not yet combined.
+    REQUIRE_EQ(p.toString(), "3x² + 4x² - 1");
     REQUIRE_EQ(p.termCount(), 3u);
 }
 

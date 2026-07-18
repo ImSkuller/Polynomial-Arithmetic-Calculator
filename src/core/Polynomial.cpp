@@ -96,7 +96,19 @@ void Polynomial::appendTermRaw(double coefficient, int exponent) {
     if (std::fabs(coefficient) < kEpsilon) {
         return;
     }
-    head_ = new Node(coefficient, exponent, head_);
+    // Append at the tail so callers (the expression parser and the file
+    // loader) preserve their input order exactly: parsing "3x^2 + 4x - 8"
+    // must display as "3x^2 + 4x - 8", not reversed.
+    Node* node = new Node(coefficient, exponent);
+    if (head_ == nullptr) {
+        head_ = node;
+        return;
+    }
+    Node* tail = head_;
+    while (tail->next != nullptr) {
+        tail = tail->next;
+    }
+    tail->next = node;
 }
 
 bool Polynomial::deleteTerm(int exponent) {

@@ -50,6 +50,29 @@ TEST_CASE("parses expressions with an explicit multiplication sign") {
     REQUIRE(p == expected);
 }
 
+TEST_CASE("parsing preserves the typed term order in the display") {
+    // Regression: the parser used to build the list through a prepending
+    // appendTermRaw, so "3x^2 + 4x - 8" displayed as "-8 + 4x + 3x²".
+    Polynomial p = PolynomialParser::parse("3x^2 + 4x - 8");
+    REQUIRE_EQ(p.toString(), "3x² + 4x - 8");
+}
+
+TEST_CASE("an overflowing superscript exponent is rejected cleanly") {
+    // Regression: std::stoi's out_of_range used to escape instead of the
+    // parser's own invalid_argument.
+    std::string expression = "3x";
+    for (int i = 0; i < 15; ++i) {
+        expression += "⁹";
+    }
+    bool threw = false;
+    try {
+        PolynomialParser::parse(expression);
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+    REQUIRE(threw);
+}
+
 TEST_CASE("toString output round-trips through the parser") {
     Polynomial p;
     p.insertTerm(5, 4);
