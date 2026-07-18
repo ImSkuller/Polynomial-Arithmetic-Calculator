@@ -187,6 +187,12 @@ LRESULT CALLBACK MainWindow::WndProcThunk(HWND hwnd, UINT message, WPARAM wParam
         auto* createStruct = reinterpret_cast<CREATESTRUCTW*>(lParam);
         self = static_cast<MainWindow*>(createStruct->lpCreateParams);
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
+        // The constructor only learns the handle after CreateWindowExW
+        // returns, but messages (WM_NCCREATE, WM_CREATE, ...) arrive before
+        // that. Adopt the handle now so handleMessage() never runs with a
+        // null hwnd_ - DefWindowProcW(nullptr, WM_NCCREATE, ...) returns
+        // FALSE, which silently cancels window creation.
+        self->hwnd_ = hwnd;
     } else {
         self = reinterpret_cast<MainWindow*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
     }
