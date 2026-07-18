@@ -1,44 +1,22 @@
 # Polynomial Arithmetic Calculator
 
-A modern C++17 console application for building, editing, and computing with
-polynomials, backed by a singly linked list. Built as an educational
-mathematics tool that also demonstrates production-quality C++ practices:
-RAII, the rule of five, exception safety, and a clean modular architecture.
+A Windows desktop app for building, editing, and computing with polynomials,
+backed by a singly linked list. Built as an educational mathematics tool
+that also demonstrates production-quality C++ practices: RAII, the rule of
+five, exception safety, and a clean modular architecture - the math engine
+never touches a window, and the GUI never touches polynomial math directly.
 
-```
-╭──────────────────────────────────────╮
-│   Polynomial Arithmetic Calculator   │
-│                v1.0.0                │
-╰──────────────────────────────────────╯
-
-╭───────────────────────╮
-│ Current Polynomial    │
-├───────────────────────┤
-│ P(x) = 5x⁴ + 3x² - 7  │
-│ Degree: 4    Terms: 3 │
-╰───────────────────────╯
-╭─────────────────────────────╮
-│ Main Menu                   │
-├─────────────────────────────┤
-│ 1. Build & Edit Polynomial  │
-│ 2. View & Analyze           │
-│ 3. Arithmetic Operations    │
-│ 4. History (Undo / Redo)    │
-│ 5. Save & Load              │
-│ 6. Random Generator         │
-│ 7. Statistics & Performance │
-│ 8. Exit                     │
-╰─────────────────────────────╯
-❯ Select an option (1-8):
-```
-
-Colored output and Unicode box-drawing are used where the terminal supports
-them, with an automatic plain-text fallback otherwise (see [assets/](assets/)
-for where to add real screenshots).
+Everything is one always-visible window: no menus to navigate, no commands
+to memorize. Every panel is labelled, every field has a sensible default
+where one makes sense, and a **Help / How it works** button in the top
+corner opens a full walkthrough of every control plus the algorithm and
+time complexity behind it - so the app documents itself; you don't need to
+read this file (or any source code) to use it.
 
 ## Table of Contents
 
 - [Features](#features)
+- [Getting Started](#getting-started)
 - [Architecture](#architecture)
 - [Folder Structure](#folder-structure)
 - [Building](#building)
@@ -54,24 +32,39 @@ for where to add real screenshots).
 
 ### Core
 
-- Create a polynomial by typing an expression (`3x^2 + 4x - 8`)
-- Insert, delete, update the coefficient of, or update the exponent of a term
-- Display in proper mathematical notation (`5x⁴ + 3x² - 7`, not `5x4+3x2-7`)
-- Addition, subtraction, multiplication
-- Merge like terms, sort by descending exponent, simplify
-- Evaluate at a given `x`
+- Build a polynomial by typing an expression (`3x^2 + 4x - 8`), or edit it
+  term by term (insert, delete, update a coefficient, update an exponent)
+- Live display in proper mathematical notation (`5x⁴ + 3x² - 7`, not
+  `5x4+3x2-7`)
+- Addition, subtraction, and multiplication against a second polynomial
+- Sort by exponent, merge like terms, and simplify, each with a live timing
+- Evaluate at any `x`
 - Degree, term count, clear, deep copy, and a leak-free destructor
+  underneath it all
 
 ### Bonus
 
-- File-based save/load (`PolynomialStorage`)
-- Undo/redo history (`HistoryManager`)
-- Expression parser with Unicode-superscript round-tripping
-- Random polynomial generator with configurable bounds
-- Millisecond-precision performance timer (`Timer`), used live in the
-  Statistics screen and when running sort/merge/simplify from the menu
-- A statistics screen: term count, degree, an estimated memory footprint, and
-  timings for the operations above
+- File-based save/load, with a native "Browse..." file picker
+- Undo/redo history with a live depth readout
+- An expression parser with Unicode-superscript round-tripping (typing what
+  the display shows always parses back to the same polynomial)
+- A random polynomial generator with configurable bounds
+- A Statistics panel: term count, degree, an estimated memory footprint,
+  and timings for sort/merge/simplify/evaluate
+- An in-app Help window covering every panel, control, algorithm, and
+  complexity bound - see [Getting Started](#getting-started)
+
+## Getting Started
+
+1. Launch `polycalc.exe` (see [Building](#building) if you need to compile
+   it first).
+2. Type an expression like `3x^2 + 4x - 8` into the **Expression** field at
+   the top-left and press Enter (or click "Set P(x) from expression").
+3. Click **Help / How it works** at any time for a full walkthrough of
+   every panel below - what each button does, the algorithm behind it, and
+   its time complexity. That window is the primary reference for using this
+   app; everything past this point in the README is background for anyone
+   extending the code.
 
 ## Architecture
 
@@ -84,14 +77,20 @@ PolynomialStorage   - Polynomial <-> text file
 PolynomialGenerator - randomized Polynomial for demos/timing
 HistoryManager      - undo/redo snapshot stacks
 Timer               - millisecond stopwatch, also usable as Timer::measureMilliseconds(fn)
-Terminal / ConsoleUI - ANSI color detection, box/table/menu rendering, input prompts
-Application         - owns the session state and the menu loop
+Application         - session state (current/secondary polynomial, history)
+                      and the operations the UI calls; no UI code of its own
+MainWindow          - the Win32 main window: builds every control and wires
+                      it to Application
+HelpWindow          - the in-app Help / How it works window
+WinUtil             - UTF-8/UTF-16 conversion and small layout helpers
+                      shared by MainWindow and HelpWindow
 ```
 
-Each class has one responsibility: `Polynomial` never touches `std::cout`,
-`ConsoleUI` never touches polynomial math, and `Application` only
+Each class has one responsibility: `Polynomial` never touches a window,
+`MainWindow` never touches polynomial math, and `Application` only
 orchestrates the two. This keeps the math layer trivially unit-testable
-(see [tests/](tests/)) independent of any console/formatting concerns.
+(see [tests/](tests/)) independent of any UI concerns - `Application` itself
+is now fully unit-tested too, since it no longer does any I/O of its own.
 
 ## Folder Structure
 
@@ -99,14 +98,13 @@ orchestrates the two. This keeps the math layer trivially unit-testable
 include/polycalc/         Public headers, mirroring src/
   core/                   Node, Polynomial, Formatting, PolynomialParser
   services/               Timer, HistoryManager, PolynomialGenerator, PolynomialStorage
-  console/                Terminal (color), ConsoleUI (layout/input)
-  Application.hpp         Session/menu orchestration
+  gui/                    WinUtil, MainWindow, HelpWindow
+  Application.hpp         Session state and the operations the UI calls
   Version.hpp             App name/version constants
 src/                      Implementation, same layout as include/
-  main.cpp                Entry point
+  main.cpp                Entry point (WinMain)
 tests/                    Custom lightweight test framework + test suites
-docs/                     Developer documentation
-assets/                   Where to add real terminal screenshots
+assets/                   Where to add real screenshots
 CMakeLists.txt            Top-level build configuration
 ```
 
@@ -115,9 +113,9 @@ dumped into a single file.
 
 ## Building
 
-Requires a C++17 compiler and CMake 3.20+. Tested with MSVC 19.44 (Visual
-Studio 2022 Build Tools) and Ninja; any C++17-capable compiler (GCC, Clang)
-works the same way.
+Requires a C++17 compiler and CMake 3.20+ on Windows (the GUI is built
+directly on the Win32 API, so this project targets Windows specifically).
+Tested with MSVC 19.44 (Visual Studio 2022 Build Tools) and Ninja.
 
 ```sh
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -125,7 +123,7 @@ cmake --build build
 ```
 
 Without Ninja, drop `-G Ninja` to use your platform's default generator
-(e.g. Visual Studio solutions on Windows, Makefiles on Linux/macOS).
+(e.g. Visual Studio solutions).
 
 On Windows without a pre-configured shell, run this from a "Developer
 Command Prompt for VS" (or after calling `vcvars64.bat`) so `cl.exe` and
@@ -134,9 +132,11 @@ Command Prompt for VS" (or after calling `vcvars64.bat`) so `cl.exe` and
 ## Running
 
 ```sh
-./build/src/polycalc        # Linux/macOS
-build\src\polycalc.exe      # Windows
+build\src\polycalc.exe
 ```
+
+It opens as a normal window - no console attaches, and there's nothing to
+pipe input into. See [Getting Started](#getting-started) above.
 
 ## Running the Tests
 
@@ -145,13 +145,15 @@ cd build
 ctest --output-on-failure
 ```
 
-The suite (68 cases as of this writing) covers `Polynomial`'s rule-of-five
-and arithmetic, the parser (including malformed-input rejection and a
-round-trip property test), storage, the random generator, the history
-manager, and the `Formatting`/`Terminal` utilities. It has also been run
-under AddressSanitizer (`/fsanitize=address` with MSVC) with zero reported
-issues; Valgrind is Linux-only and wasn't available in this Windows
-development environment, so ASan plus manual review stood in for it.
+The suite covers `Polynomial`'s rule-of-five and arithmetic, the parser
+(including malformed-input rejection and a round-trip property test),
+storage, the random generator, the history manager, the `Formatting`
+utilities, and `Application`'s session logic (expression parsing,
+insert/delete/update, undo/redo, arithmetic against the secondary
+polynomial, and the statistics snapshot) - everything except the Win32
+window code itself, which has no meaningful logic to unit-test in
+isolation. It has also been run under AddressSanitizer
+(`/fsanitize=address` with MSVC) with zero reported issues.
 
 ## How the Linked List Works
 
@@ -164,12 +166,14 @@ Two insertion primitives exist, with deliberately different contracts:
 - **`insertTerm`** searches the list for an existing node with the same
   exponent and merges into it (removing the node if the merge cancels to
   zero); otherwise it prepends a new node. This guarantees **no duplicate
-  exponents**, but does **not** impose any particular order.
+  exponents**, but does **not** impose any particular order. The Build &
+  Edit panel's Insert Term button calls this.
 - **`appendTermRaw`** unconditionally prepends a new node, even if a term
   with that exponent already exists. The expression parser and the file
   loader use this, so that parsing `3x^2 + 4x^2` faithfully preserves both
   terms - exactly as a student working through the algorithm by hand would
-  expect - until `mergeLikeTerms()` or `simplify()` is explicitly invoked.
+  expect - until `mergeLikeTerms()` or `simplify()` is explicitly invoked
+  from the Analyze panel.
 
 This is a deliberate design choice: an earlier version of this project had
 `insertTerm` also maintain sort order automatically, which made "Sort by
@@ -199,6 +203,9 @@ remain correct regardless of a polynomial's current order.
   digits) with straightforward substring scanning - no external parser
   library needed.
 
+The in-app Help window explains each of these in the context of the button
+that triggers it, along with its complexity.
+
 ## Complexity Reference
 
 Let `n` and `m` be the term counts of the operands (`n` for a single
@@ -217,26 +224,26 @@ operand where only one is involved).
 | `operator==`                        | O(n log n + m log m) | Compares normalized copies |
 
 **Memory**: O(n) - one heap allocation per term (`sizeof(Node)` bytes each;
-no arrays, no unused capacity). The Statistics screen reports a live
-estimate for the current polynomial.
+no arrays, no unused capacity). The Statistics panel reports a live estimate
+for the current polynomial.
 
 ## Design Notes and Trade-offs
 
 - **Exceptions over error codes**: `Polynomial` throws `std::invalid_argument`
   for a negative exponent, the parser throws with a message naming the
   offending substring, and storage/generator throw on invalid input or I/O
-  failure. Every menu handler in `Application` catches `std::exception` and
-  reports it via `ConsoleUI::printError` rather than crashing.
+  failure. `Application`'s methods propagate these rather than swallowing
+  them, and every `MainWindow` handler catches `std::exception` and reports
+  it through the activity log rather than crashing.
 - **First-match semantics for duplicates**: if a polynomial currently holds
   duplicate exponents (e.g. right after parsing `4x^2 + 3x^2`),
   `deleteTerm`/`updateCoefficient`/`updateExponent` act on the first match
   found. Merge like terms first for unambiguous single-term edits.
   `evaluate`, `toString`, and arithmetic are all correct regardless.
-- **EOF is not an error condition to spin on**: input prompts throw a
-  dedicated `InputClosedException` (deliberately not derived from
-  `std::exception`) when stdin is exhausted, so it passes straight through
-  every menu's generic error handler and exits the program cleanly instead
-  of looping forever on reads that can never succeed again.
+- **A GUI-subsystem executable, on purpose**: `polycalc` is built with
+  `add_executable(polycalc WIN32 ...)`, so it launches with no attached
+  console. All input and output go through window controls; there's no
+  console fallback to maintain.
 
 ## Future Improvements
 
@@ -244,7 +251,7 @@ estimate for the current polynomial.
   `evaluate` uses `std::pow` per term, which is simpler and correct but
   does slightly more work than necessary for consecutive integer exponents)
 - Multi-variable polynomial support
-- A scripted/batch mode (read a sequence of commands from a file) alongside
-  the interactive menu
 - Named polynomial slots (more than just "current" and "second") for
   juggling several polynomials in one session
+- A resizable/DPI-aware layout for the main window (currently a fixed-size
+  window sized to fit every panel without scrolling)
