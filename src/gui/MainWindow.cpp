@@ -1,8 +1,12 @@
 #include "polycalc/gui/MainWindow.hpp"
 
+#include <commdlg.h>
+
+#include <cwchar>
 #include <stdexcept>
 
 #include "polycalc/Version.hpp"
+#include "polycalc/core/Formatting.hpp"
 
 namespace polycalc::gui {
 
@@ -42,6 +46,18 @@ enum ControlId : int {
     kIdSubtract,
     kIdMultiply,
     kIdUseResult,
+
+    kIdEvaluate,
+    kIdSort,
+    kIdMerge,
+    kIdSimplify,
+
+    kIdUndo,
+    kIdRedo,
+
+    kIdBrowseFile,
+    kIdSave,
+    kIdLoad,
 };
 
 // Height of a group box's title strip plus its bottom padding, given how
@@ -187,9 +203,15 @@ void MainWindow::createControls() {
     int leftY = kPanelTop;
     createBuildAndEditPanel(kLeftColumnX, leftY, kColumnWidth, leftY);
     leftY += metrics::kGroupGap;
+    createHistoryPanel(kLeftColumnX, leftY, kColumnWidth, leftY);
+    leftY += metrics::kGroupGap;
+    createSaveLoadPanel(kLeftColumnX, leftY, kColumnWidth, leftY);
+    leftY += metrics::kGroupGap;
 
     int rightY = kPanelTop;
     createArithmeticPanel(kRightColumnX, rightY, kColumnWidth, rightY);
+    rightY += metrics::kGroupGap;
+    createAnalyzePanel(kRightColumnX, rightY, kColumnWidth, rightY);
     rightY += metrics::kGroupGap;
 }
 
@@ -280,6 +302,84 @@ void MainWindow::createArithmeticPanel(int x, int y, int width, int& bottomY) {
     bottomY = groupRect.bottom;
 }
 
+void MainWindow::createAnalyzePanel(int x, int y, int width, int& bottomY) {
+    using namespace metrics;
+    constexpr int kRows = 7;
+    const RECT groupRect{x, y, x + width, y + groupBoxHeight(kRows)};
+    CreateGroupBox(hwnd_, instance_, groupRect, L"Analyze", -1);
+
+    ColumnLayout col(x + 10, y + kGroupTitleGap, width - 20);
+
+    RECT row = col.nextRow();
+    CreateLabel(hwnd_, instance_, RECT{row.left, row.top, row.left + kLabelWidth, row.bottom},
+                L"Value of x:");
+    xValueBox_ = CreateEditBox(
+        hwnd_, instance_, RECT{row.left + kLabelWidth, row.top, row.right, row.bottom}, -1);
+
+    row = col.nextRow();
+    CreateButtonCtrl(hwnd_, instance_, row, L"Evaluate P(x)", kIdEvaluate);
+
+    row = col.nextRow();
+    evaluateResultLabel_ = CreateLabel(hwnd_, instance_, row, L"Result: (evaluate above)");
+
+    row = col.nextRow();
+    CreateButtonCtrl(hwnd_, instance_, row,
+                      L"Sort by Exponent (merge sort, descending, O(n log n))", kIdSort);
+
+    row = col.nextRow();
+    CreateButtonCtrl(hwnd_, instance_, row, L"Merge Like Terms (combine duplicate exponents)",
+                      kIdMerge);
+
+    row = col.nextRow();
+    CreateButtonCtrl(hwnd_, instance_, row, L"Simplify (sort + merge + drop zero terms)",
+                      kIdSimplify);
+
+    row = col.nextRow();
+    timingLabel_ = CreateLabel(hwnd_, instance_, row, L"Last operation took: -");
+
+    bottomY = groupRect.bottom;
+}
+
+void MainWindow::createHistoryPanel(int x, int y, int width, int& bottomY) {
+    using namespace metrics;
+    constexpr int kRows = 2;
+    const RECT groupRect{x, y, x + width, y + groupBoxHeight(kRows)};
+    CreateGroupBox(hwnd_, instance_, groupRect, L"History (Undo / Redo)", -1);
+
+    ColumnLayout col(x + 10, y + kGroupTitleGap, width - 20);
+
+    RECT row = col.nextRow();
+    CreateButtonCtrl(hwnd_, instance_, splitRect(row, 0, 2), L"Undo", kIdUndo);
+    CreateButtonCtrl(hwnd_, instance_, splitRect(row, 1, 2), L"Redo", kIdRedo);
+
+    row = col.nextRow();
+    historyLabel_ = CreateLabel(hwnd_, instance_, row, L"Undo available: 0   Redo available: 0");
+
+    bottomY = groupRect.bottom;
+}
+
+void MainWindow::createSaveLoadPanel(int x, int y, int width, int& bottomY) {
+    using namespace metrics;
+    constexpr int kRows = 2;
+    const RECT groupRect{x, y, x + width, y + groupBoxHeight(kRows)};
+    CreateGroupBox(hwnd_, instance_, groupRect, L"Save && Load", -1);
+
+    ColumnLayout col(x + 10, y + kGroupTitleGap, width - 20);
+
+    RECT row = col.nextRow();
+    CreateLabel(hwnd_, instance_, RECT{row.left, row.top, row.left + kLabelWidth, row.bottom},
+                L"File path:");
+    filePathBox_ = CreateEditBox(
+        hwnd_, instance_, RECT{row.left + kLabelWidth, row.top, row.right, row.bottom}, -1);
+
+    row = col.nextRow();
+    CreateButtonCtrl(hwnd_, instance_, splitRect(row, 0, 3), L"Browse...", kIdBrowseFile);
+    CreateButtonCtrl(hwnd_, instance_, splitRect(row, 1, 3), L"Save", kIdSave);
+    CreateButtonCtrl(hwnd_, instance_, splitRect(row, 2, 3), L"Load", kIdLoad);
+
+    bottomY = groupRect.bottom;
+}
+
 void MainWindow::onCommand(int controlId) {
     switch (controlId) {
         case kIdHelpButton:
@@ -318,6 +418,33 @@ void MainWindow::onCommand(int controlId) {
         case kIdUseResult:
             onUseResultAsCurrent();
             break;
+        case kIdEvaluate:
+            onEvaluate();
+            break;
+        case kIdSort:
+            onSort();
+            break;
+        case kIdMerge:
+            onMerge();
+            break;
+        case kIdSimplify:
+            onSimplify();
+            break;
+        case kIdUndo:
+            onUndo();
+            break;
+        case kIdRedo:
+            onRedo();
+            break;
+        case kIdBrowseFile:
+            onBrowseFile();
+            break;
+        case kIdSave:
+            onSave();
+            break;
+        case kIdLoad:
+            onLoad();
+            break;
         default:
             break;
     }
@@ -328,6 +455,15 @@ void MainWindow::refreshCurrentDisplay() {
     SetControlTextUtf8(currentDegreeLabel_, "P(x) = " + app_.currentText() + "      (degree " +
                                                 degreeText + ", " +
                                                 std::to_string(app_.termCount()) + " term(s))");
+    // Every mutation that changes current_ also changes undo/redo depth, so
+    // the history readout is kept in lockstep here rather than duplicated
+    // across every handler that calls refreshCurrentDisplay().
+    refreshHistoryLabel();
+}
+
+void MainWindow::refreshHistoryLabel() {
+    SetControlTextUtf8(historyLabel_, "Undo available: " + std::to_string(app_.undoDepth()) +
+                                          "   Redo available: " + std::to_string(app_.redoDepth()));
 }
 
 void MainWindow::appendLog(const std::string& tag, const std::string& message) {
@@ -459,6 +595,107 @@ void MainWindow::onUseResultAsCurrent() {
     app_.adoptAsCurrent(lastArithmeticResult_);
     refreshCurrentDisplay();
     logSuccess("P(x) is now the arithmetic result: " + app_.currentText());
+}
+
+void MainWindow::onEvaluate() {
+    try {
+        const double x = parseDoubleField(xValueBox_, "x");
+        const double result = app_.evaluate(x);
+        SetControlTextUtf8(evaluateResultLabel_,
+                            "Result: P(" + formatCoefficient(x) + ") = " + formatCoefficient(result));
+        logSuccess("P(" + formatCoefficient(x) + ") = " + formatCoefficient(result));
+    } catch (const std::exception& ex) {
+        logError(ex.what());
+    }
+}
+
+void MainWindow::onSort() {
+    const double elapsed = app_.sortByExponent();
+    refreshCurrentDisplay();
+    SetControlTextUtf8(timingLabel_, "Last operation took: " + formatCoefficient(elapsed) + " ms");
+    logSuccess("Sorted in " + formatCoefficient(elapsed) + " ms. P(x) = " + app_.currentText());
+}
+
+void MainWindow::onMerge() {
+    const double elapsed = app_.mergeLikeTerms();
+    refreshCurrentDisplay();
+    SetControlTextUtf8(timingLabel_, "Last operation took: " + formatCoefficient(elapsed) + " ms");
+    logSuccess("Merged in " + formatCoefficient(elapsed) + " ms. P(x) = " + app_.currentText());
+}
+
+void MainWindow::onSimplify() {
+    const double elapsed = app_.simplify();
+    refreshCurrentDisplay();
+    SetControlTextUtf8(timingLabel_, "Last operation took: " + formatCoefficient(elapsed) + " ms");
+    logSuccess("Simplified in " + formatCoefficient(elapsed) + " ms. P(x) = " + app_.currentText());
+}
+
+void MainWindow::onUndo() {
+    try {
+        app_.undo();
+        refreshCurrentDisplay();
+        logSuccess("Undone. P(x) = " + app_.currentText());
+    } catch (const std::exception& ex) {
+        logError(ex.what());
+    }
+}
+
+void MainWindow::onRedo() {
+    try {
+        app_.redo();
+        refreshCurrentDisplay();
+        logSuccess("Redone. P(x) = " + app_.currentText());
+    } catch (const std::exception& ex) {
+        logError(ex.what());
+    }
+}
+
+void MainWindow::onSave() {
+    try {
+        const std::string path = GetControlTextUtf8(filePathBox_);
+        if (path.empty()) {
+            throw std::invalid_argument("Enter or browse to a file path first.");
+        }
+        app_.saveToFile(path);
+        logSuccess("Saved to " + path);
+    } catch (const std::exception& ex) {
+        logError(ex.what());
+    }
+}
+
+void MainWindow::onLoad() {
+    try {
+        const std::string path = GetControlTextUtf8(filePathBox_);
+        if (path.empty()) {
+            throw std::invalid_argument("Enter or browse to a file path first.");
+        }
+        app_.loadFromFile(path);
+        refreshCurrentDisplay();
+        logSuccess("Loaded. P(x) = " + app_.currentText());
+    } catch (const std::exception& ex) {
+        logError(ex.what());
+    }
+}
+
+void MainWindow::onBrowseFile() {
+    wchar_t pathBuffer[MAX_PATH] = L"";
+    const std::wstring existing = Utf8ToWide(GetControlTextUtf8(filePathBox_));
+    if (existing.size() < MAX_PATH) {
+        wcsncpy_s(pathBuffer, existing.c_str(), existing.size());
+    }
+
+    OPENFILENAMEW dialog{};
+    dialog.lStructSize = sizeof(dialog);
+    dialog.hwndOwner = hwnd_;
+    dialog.lpstrFilter = L"Polynomial files (*.poly)\0*.poly\0All files (*.*)\0*.*\0";
+    dialog.lpstrFile = pathBuffer;
+    dialog.nMaxFile = MAX_PATH;
+    dialog.Flags = OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
+    dialog.lpstrDefExt = L"poly";
+
+    if (GetOpenFileNameW(&dialog) != 0) {
+        SetControlTextUtf8(filePathBox_, WideToUtf8(pathBuffer));
+    }
 }
 
 void MainWindow::onShowHelp() {

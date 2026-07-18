@@ -45,16 +45,31 @@ private:
     Polynomial lastArithmeticResult_;
     bool hasArithmeticResult_ = false;
 
+    // Analyze panel.
+    HWND xValueBox_ = nullptr;
+    HWND evaluateResultLabel_ = nullptr;
+    HWND timingLabel_ = nullptr;
+
+    // History panel.
+    HWND historyLabel_ = nullptr;
+
+    // Save & Load panel.
+    HWND filePathBox_ = nullptr;
+
     static LRESULT CALLBACK WndProcThunk(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
     LRESULT handleMessage(UINT message, WPARAM wParam, LPARAM lParam);
 
     void createControls();
     void createBuildAndEditPanel(int x, int y, int width, int& bottomY);
     void createArithmeticPanel(int x, int y, int width, int& bottomY);
+    void createAnalyzePanel(int x, int y, int width, int& bottomY);
+    void createHistoryPanel(int x, int y, int width, int& bottomY);
+    void createSaveLoadPanel(int x, int y, int width, int& bottomY);
     void onCommand(int controlId);
 
     void refreshCurrentDisplay();
     void refreshSecondaryDisplay();
+    void refreshHistoryLabel();
     void appendLog(const std::string& tag, const std::string& message);
     void logSuccess(const std::string& message);
     void logError(const std::string& message);
@@ -72,6 +87,15 @@ private:
     void onSetSecondaryFromExpression();
     void onArithmetic(int operation);
     void onUseResultAsCurrent();
+    void onEvaluate();
+    void onSort();
+    void onMerge();
+    void onSimplify();
+    void onUndo();
+    void onRedo();
+    void onSave();
+    void onLoad();
+    void onBrowseFile();
 
     void onShowHelp();
 };
