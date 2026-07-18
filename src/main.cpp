@@ -1,18 +1,15 @@
 #include <exception>
-#include <string>
 
-#include "polycalc/Application.hpp"
-#include "polycalc/console/ConsoleUI.hpp"
+#include "polycalc/gui/MainWindow.hpp"
 
-int main() {
+int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int showCommand) {
     try {
-        polycalc::Application application;
-        return application.run();
-    } catch (const polycalc::InputClosedException&) {
-        polycalc::ConsoleUI::printInfo("Input closed. Goodbye!");
-        return 0;
+        polycalc::gui::MainWindow window(instance);
+        window.show(showCommand);
+        return window.runMessageLoop();
     } catch (const std::exception& ex) {
-        polycalc::ConsoleUI::printError(std::string("Fatal error: ") + ex.what());
+        MessageBoxA(nullptr, ex.what(), "Polynomial Arithmetic Calculator - Fatal Error",
+                    MB_OK | MB_ICONERROR);
         return 1;
     }
 }
