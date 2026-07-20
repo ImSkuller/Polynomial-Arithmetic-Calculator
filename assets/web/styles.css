@@ -471,6 +471,9 @@ form.field-row input {
   padding: 24px;
   z-index: 50;
 }
+.modal-backdrop[hidden] {
+  display: none;
+}
 
 .modal {
   width: min(720px, 100%);

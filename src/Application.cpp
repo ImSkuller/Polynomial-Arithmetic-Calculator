@@ -165,4 +165,4 @@ Statistics Application::statistics() const {
     return stats;
 }
 
-} // namespace polycalc
+}
