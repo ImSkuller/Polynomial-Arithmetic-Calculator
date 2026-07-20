@@ -1,17 +1,22 @@
 # Polynomial Arithmetic Calculator
 
-A Windows desktop app for building, editing, and computing with polynomials,
-backed by a singly linked list. Built as an educational mathematics tool
-that also demonstrates production-quality C++ practices: RAII, the rule of
-five, exception safety, and a clean modular architecture - the math engine
-never touches a window, and the GUI never touches polynomial math directly.
+A Windows app for building, editing, and computing with polynomials, backed
+by a singly linked list. Built as an educational mathematics tool that also
+demonstrates production-quality C++ practices: RAII, the rule of five,
+exception safety, and a clean modular architecture - the math engine never
+touches HTTP or JSON, and the web layer never touches polynomial math
+directly.
 
-Everything is one always-visible window: no menus to navigate, no commands
-to memorize. Every panel is labelled, every field has a sensible default
-where one makes sense, and a **Help / How it works** button in the top
-corner opens a full walkthrough of every control plus the algorithm and
-time complexity behind it - so the app documents itself; you don't need to
-read this file (or any source code) to use it.
+The interface is a modern, minimal single-page web UI, served by the app's
+own C++ backend on `127.0.0.1` and opened in your default browser
+automatically - there's no separate server to run, no internet connection
+involved, and no framework or package manager on either side (see
+[Design Notes and Trade-offs](#design-notes-and-trade-offs) for why).
+Every panel is labelled, every field has a sensible default where one makes
+sense, and a **Help / How it works** button opens a full walkthrough of
+every control plus the algorithm and time complexity behind it - so the app
+documents itself; you don't need to read this file (or any source code) to
+use it.
 
 ## Table of Contents
 
@@ -44,27 +49,34 @@ read this file (or any source code) to use it.
 
 ### Bonus
 
-- File-based save/load, with a native "Browse..." file picker
+- File-based save/load, with the **native Windows file picker** (not an
+  HTML `<input type=file>` - see [Design Notes](#design-notes-and-trade-offs)
+  for why that distinction matters)
 - Undo/redo history with a live depth readout
 - An expression parser with Unicode-superscript round-tripping (typing what
   the display shows always parses back to the same polynomial)
 - A random polynomial generator with configurable bounds
 - A Statistics panel: term count, degree, an estimated memory footprint,
   and timings for sort/merge/simplify/evaluate
-- An in-app Help window covering every panel, control, algorithm, and
+- An in-app Help modal covering every panel, control, algorithm, and
   complexity bound - see [Getting Started](#getting-started)
+- A light/dark theme toggle that follows your OS preference by default
 
 ## Getting Started
 
 1. Launch `polycalc.exe` (see [Building](#building) if you need to compile
-   it first).
+   it first). A console window opens and prints the local address it's
+   serving on, then your default browser opens to it automatically.
 2. Type an expression like `3x^2 + 4x - 8` into the **Expression** field at
-   the top-left and press Enter (or click "Set P(x) from expression").
+   the top-left and press Enter (or click "Set P(x)").
 3. Click **Help / How it works** at any time for a full walkthrough of
-   every panel below - what each button does, the algorithm behind it, and
-   its time complexity. That window is the primary reference for using this
+   every panel below - what each control does, the algorithm behind it, and
+   its time complexity. That panel is the primary reference for using this
    app; everything past this point in the README is background for anyone
    extending the code.
+4. To stop the app, close the console window, press Ctrl+C in it, or click
+   **Quit** in the page itself - all three shut the local server down the
+   same way closing the old desktop window used to end the process.
 
 ## Architecture
 
@@ -78,19 +90,30 @@ PolynomialGenerator - randomized Polynomial for demos/timing
 HistoryManager      - undo/redo snapshot stacks
 Timer               - millisecond stopwatch, also usable as Timer::measureMilliseconds(fn)
 Application         - session state (current/secondary polynomial, history)
-                      and the operations the UI calls; no UI code of its own
-MainWindow          - the Win32 main window: builds every control and wires
-                      it to Application
-HelpWindow          - the in-app Help / How it works window
-WinUtil             - UTF-8/UTF-16 conversion and small layout helpers
-                      shared by MainWindow and HelpWindow
+                      and the operations the UI calls; no UI or I/O code of
+                      its own - identical to what the old Win32 GUI called
+
+Json                - minimal JSON value type: parse a request body, build
+                      a response
+HttpServer          - minimal loopback-only HTTP/1.1 server (Winsock2):
+                      routing plus embedded static-asset serving
+FileDialog          - wraps the native GetOpenFileNameW/GetSaveFileNameW
+                      common dialogs
+ApiServer           - wires every Application operation to an HTTP+JSON
+                      route under /api/...; the web-era equivalent of the
+                      old gui::MainWindow
+assets/web/         - index.html, styles.css, app.js: the frontend, baked
+                      into the .exe at build time (see Building below)
 ```
 
-Each class has one responsibility: `Polynomial` never touches a window,
-`MainWindow` never touches polynomial math, and `Application` only
-orchestrates the two. This keeps the math layer trivially unit-testable
-(see [tests/](tests/)) independent of any UI concerns - `Application` itself
-is now fully unit-tested too, since it no longer does any I/O of its own.
+Each class has one responsibility: `Polynomial` never touches a socket,
+`HttpServer` never touches polynomial math, and `ApiServer` only
+orchestrates the two - the same separation the old Win32 `MainWindow` kept
+between the window and the math engine, just with HTTP+JSON in place of
+window messages. This keeps the math layer trivially unit-testable (see
+[tests/](tests/)) independent of any UI concerns; `Application` itself is
+fully unit-tested too, since it does no I/O of its own - only `ApiServer`
+and the frontend changed when the GUI did.
 
 ## Folder Structure
 
@@ -98,13 +121,14 @@ is now fully unit-tested too, since it no longer does any I/O of its own.
 include/polycalc/         Public headers, mirroring src/
   core/                   Node, Polynomial, Formatting, PolynomialParser
   services/               Timer, HistoryManager, PolynomialGenerator, PolynomialStorage
-  gui/                    WinUtil, MainWindow, HelpWindow
+  web/                    Json, HttpServer, FileDialog, ApiServer, Win32/Utf8 helpers
   Application.hpp         Session state and the operations the UI calls
   Version.hpp             App name/version constants
 src/                      Implementation, same layout as include/
-  main.cpp                Entry point (WinMain)
+  main.cpp                Entry point (console main())
+assets/web/               index.html, styles.css, app.js - the frontend
+cmake/EmbedWebAssets.cmake  Bakes assets/web/* into a generated C++ header
 tests/                    Custom lightweight test framework + test suites
-assets/                   Where to add real screenshots
 CMakeLists.txt            Top-level build configuration
 ```
 
@@ -113,9 +137,10 @@ dumped into a single file.
 
 ## Building
 
-Requires a C++17 compiler and CMake 3.20+ on Windows (the GUI is built
-directly on the Win32 API, so this project targets Windows specifically).
-Tested with MSVC 19.44 (Visual Studio 2022 Build Tools) and Ninja.
+Requires a C++17 compiler and CMake 3.20+ on Windows (the backend is built
+directly on Winsock2 and the Win32 common-dialog API, so this project
+targets Windows specifically). Tested with MSVC 19.44 (Visual Studio 2022
+Build Tools) and Ninja.
 
 ```sh
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -129,14 +154,27 @@ On Windows without a pre-configured shell, run this from a "Developer
 Command Prompt for VS" (or after calling `vcvars64.bat`) so `cl.exe` and
 `cmake` are on `PATH`.
 
+The build has one extra step versus a plain C++ compile: a
+`cmake --build`-time custom command (`cmake/EmbedWebAssets.cmake`) reads
+every file under `assets/web/` and generates
+`build/generated/polycalc/web/WebAssets.hpp`, a header embedding each file's
+bytes as a `constexpr` C++ string. This is what lets `polycalc.exe` remain a
+single, self-contained file with no `web/` folder to keep alongside it at
+runtime. Editing an existing file under `assets/web/` and rebuilding
+regenerates the header automatically; **adding a new file** there requires
+re-running the `cmake -S . -B build` configure step once (a known CMake
+`file(GLOB)` limitation - see the comment in `src/CMakeLists.txt`).
+
 ## Running
 
 ```sh
 build\src\polycalc.exe
 ```
 
-It opens as a normal window - no console attaches, and there's nothing to
-pipe input into. See [Getting Started](#getting-started) above.
+It opens a console window (its status display - see
+[Design Notes](#design-notes-and-trade-offs) for why this is a console app
+now, not a windowless one) and your default browser opens to the app
+automatically. See [Getting Started](#getting-started) above.
 
 ## Running the Tests
 
@@ -150,10 +188,12 @@ The suite covers `Polynomial`'s rule-of-five and arithmetic, the parser
 storage, the random generator, the history manager, the `Formatting`
 utilities, and `Application`'s session logic (expression parsing,
 insert/delete/update, undo/redo, arithmetic against the secondary
-polynomial, and the statistics snapshot) - everything except the Win32
-window code itself, which has no meaningful logic to unit-test in
-isolation. It has also been run under AddressSanitizer
-(`/fsanitize=address` with MSVC) with zero reported issues.
+polynomial, and the statistics snapshot) - everything except the web/HTTP
+layer itself, which (like the old Win32 window code before it) has no
+meaningful logic to unit-test in isolation; it's a thin wrapper that calls
+straight through to the already-tested `Application` methods. It has also
+been run under AddressSanitizer (`/fsanitize=address` with MSVC) with zero
+reported issues.
 
 ## How the Linked List Works
 
@@ -203,7 +243,7 @@ remain correct regardless of a polynomial's current order.
   digits) with straightforward substring scanning - no external parser
   library needed.
 
-The in-app Help window explains each of these in the context of the button
+The in-app Help modal explains each of these in the context of the control
 that triggers it, along with its complexity.
 
 ## Complexity Reference
@@ -233,17 +273,52 @@ for the current polynomial.
   for a negative exponent, the parser throws with a message naming the
   offending substring, and storage/generator throw on invalid input or I/O
   failure. `Application`'s methods propagate these rather than swallowing
-  them, and every `MainWindow` handler catches `std::exception` and reports
-  it through the activity log rather than crashing.
+  them, and every `ApiServer` route wraps its handler in one shared
+  try/catch (`ApiServer::wrap`) that turns any `std::exception` into a
+  `{ok:false, error}` JSON response instead of crashing - the same job every
+  individual `MainWindow::onXxx` handler used to do by hand in the old
+  Win32 GUI.
 - **First-match semantics for duplicates**: if a polynomial currently holds
   duplicate exponents (e.g. right after parsing `4x^2 + 3x^2`),
   `deleteTerm`/`updateCoefficient`/`updateExponent` act on the first match
   found. Merge like terms first for unambiguous single-term edits.
   `evaluate`, `toString`, and arithmetic are all correct regardless.
-- **A GUI-subsystem executable, on purpose**: `polycalc` is built with
-  `add_executable(polycalc WIN32 ...)`, so it launches with no attached
-  console. All input and output go through window controls; there's no
-  console fallback to maintain.
+- **A local server, not a hosted one**: `ApiServer` binds `127.0.0.1` on an
+  OS-assigned free port (never a fixed port, so two copies of the app can
+  run side by side without a conflict) and is never reachable from outside
+  the machine. There is exactly one `Application` per process - like the
+  old single-window GUI, this app models one session, not a multi-user
+  server.
+- **No third-party HTTP or JSON library**: `HttpServer` and `Json` are both
+  small, purpose-built for exactly what this app needs (loopback-only,
+  small JSON payloads, a couple dozen fixed routes) rather than general-
+  purpose libraries like cpp-httplib or nlohmann/json. This mirrors the
+  project's existing expression parser, which was already hand-rolled for
+  the same reason (see `PolynomialParser`) - and the test suite's own
+  framework, built without internet access to fetch Catch2/doctest. Pulling
+  in a package manager (vcpkg/Conan) to fetch either would have been the
+  more common choice for a larger project, but would be a lot of new
+  machinery for the actual surface area involved here.
+- **A console-subsystem executable now, not a windowless one**: the old
+  `polycalc` was built `WIN32`-subsystem (no attached console) because a
+  Win32 window was its entire interface. Now that the interface is a web
+  page, the console *is* the interface for the process itself - it reports
+  the URL being served and stays open for the life of the server, the same
+  role the old always-visible window played. See `src/CMakeLists.txt` and
+  `src/main.cpp`.
+- **The native file dialog survived the move to a browser UI on purpose**:
+  a browser's `<input type=file>` can only *upload file contents* and can't
+  preselect or return an arbitrary server-side path - it's built for a
+  remote server that doesn't otherwise have filesystem access, which isn't
+  this app's situation. Since the process serving the page is still a
+  normal Windows program, `POST /api/browse/open` and `/api/browse/save`
+  just call `GetOpenFileNameW`/`GetSaveFileNameW` directly (see
+  `FileDialog.hpp`) and hand the browser back the chosen path, so Save &
+  Load keeps the same native picker the desktop GUI always had.
+- **Static assets are embedded, not deployed alongside the .exe**: see
+  [Building](#building) - `cmake/EmbedWebAssets.cmake` runs at build time
+  so the shipped artifact is still just `polycalc.exe`, matching how the
+  old Win32 build shipped as a single file.
 
 ## Future Improvements
 
@@ -253,5 +328,6 @@ for the current polynomial.
 - Multi-variable polynomial support
 - Named polynomial slots (more than just "current" and "second") for
   juggling several polynomials in one session
-- A resizable/DPI-aware layout for the main window (currently a fixed-size
-  window sized to fit every panel without scrolling)
+- Per-tab/per-client sessions, if this ever needs to serve more than one
+  browser tab's worth of state at a time (today, like the old single-window
+  GUI, every open tab shares the same one `Application` instance)
